@@ -1,5 +1,7 @@
 apply plugin: 'java'
 apply plugin: 'application'
+apply plugin: 'maven-publish'
+
 buildscript {
     repositories {
         jcenter()
@@ -20,10 +22,10 @@ repositories {
 configurations {
     javacpp
 }
-ext {
-    artifactId = "hnsw-jni"
-    groupId = "com.criteo.hnsw"
-}
+
+archivesBaseName = "hnsw-jni"
+group = "com.criteo.hnsw"
+version = "0.2"
 
 dependencies {
     javacpp group: 'org.bytedeco', name: 'javacpp', version: '1.4.4'
@@ -74,5 +76,24 @@ task generateLibrary(type: JavaExec, dependsOn: 'compileLib') {
 }
 compileJava.dependsOn generateLibrary
 compileTestJava.dependsOn generateLibrary
-//SET( CMAKE_CXX_FLAGS  "-Ofast -DNDEBUG -std=c++11 -DHAVE_CXX0X -openmp -march=native -fpic -w -fopenmp -ftree-vectorize" )
-//clang++ -I/Library/Java/JavaVirtualMachines/jdk1.8.0_161.jdk/Contents/Home/include -I/Library/Java/JavaVirtualMachines/jdk1.8.0_161.jdk/Contents/Home/include/darwin /Users/d.parfenchik/Dev/hnswlib-jni/build/classes/java/main/com/criteo/hnsw/jniHnswLib.cpp /Users/d.parfenchik/Dev/hnswlib-jni/build/classes/java/main/jnijavacpp.cpp -std=c++11 -march=x86-64 -m64 -O3 -Wl,-rpath,@loader_path/. -Wall -fPIC -dynamiclib -undefined dynamic_lookup -o libjniHnswLib.dylib -framework JavaVM
+
+publishing {
+    publications {
+        hnswjniUberJar(MavenPublication) {
+            groupId group
+            artifactId archivesBaseName
+            version version
+            artifact shadowJar
+        }
+    }
+
+    repositories {
+        maven {
+            credentials {
+                username System.env.MAVEN_USER
+                password System.env.MAVEN_PASSWORD
+            }
+            url = project.publishUrl
+        }
+    }
+}
