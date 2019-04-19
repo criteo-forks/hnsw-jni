@@ -5,7 +5,7 @@ The intent is provide fast hnsw implmentation for JVM.
 
 ## Building
 ```
-gradle init
+gradle wrapper --gradle-version=4.10
 ./gradlew generateLib
 ```
 Will generate JNI bindings in Java and C and compile them for the current platform.
