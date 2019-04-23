@@ -41,14 +41,6 @@ __pycache__
 *.egg-info
 
 # Gradle-specific
-.gradle
-gradle.properties
-build/
-classes/
-gradle
-gradlew.bat
-gradlew
-
-#tests
-retrieval/test/dir
 .gradle/
+build/
+

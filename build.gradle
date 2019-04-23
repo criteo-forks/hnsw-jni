@@ -1,99 +1,90 @@
-apply plugin: 'java'
-apply plugin: 'application'
-apply plugin: 'maven-publish'
-
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
-    }
+plugins {
+    id 'java-library'
+    id 'com.criteo.moab-module'
 }
- 
-apply plugin: 'com.github.johnrengelman.shadow'
 
-mainClassName = 'com.criteo.hnsw.HelloHnsw'
+ext {
+    jniFolder = "$buildDir/generated/jni/java"
+}
 
 repositories {
    jcenter()
 }
 
-configurations {
+sourceSets {
     javacpp
+
+    nativeLib {
+        java {
+            srcDir jniFolder
+        }
+    }
 }
 
-archivesBaseName = "hnsw-jni"
 group = "com.criteo.hnsw"
-version = "0.2"
+
+configurations {
+    nativeLibImplementation
+}
 
 dependencies {
-    javacpp group: 'org.bytedeco', name: 'javacpp', version: '1.4.4'
-    compile configurations.javacpp.dependencies
-    testCompile 'junit:junit:4.12'
-
+    nativeLibImplementation files(sourceSets.javacpp.runtimeClasspath)
+    api files(sourceSets.nativeLib.runtimeClasspath)
+    javacppImplementation group: 'org.bytedeco', name: 'javacpp', version: '1.5'
+    testImplementation 'junit:junit:4.12'
 }
 
 def HnswLibConfigClass= "HnswLibConfig"
 def HnswLibClass= "HnswLib"
 
-task compileConfig(type: JavaCompile) {
-    source = fileTree(dir: 'src', include: "**/${HnswLibConfigClass}.java")
-    destinationDir = file(sourceSets.main.java.outputDir)
-    classpath = files([configurations.javacpp.asPath])
+processJavacppResources {
+    from('src/main/cpp') {
+        into 'com/criteo/hnsw'
+    }
 }
 
-task copyCpp(type: Copy) {
-    from "src/main/cpp/"
-    include "**"
-    into file("${sourceSets.main.java.outputDir}/com/criteo/hnsw/")
+task('runHelloWorld', type:JavaExec) {
+    doFirst {
+        project.mkdir('build/run/bin')
+    }
+    group = "Execution"
+    description = "Sample program"
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'com.criteo.hnsw.HelloHnsw'
+    workingDir = 'build/run'
 }
 
-task generateJniClass(type: JavaExec, dependsOn: ['compileConfig', 'copyCpp']) {
-    classpath = files([configurations.javacpp.asPath])
+task generateJniClass(type: JavaExec) {
+    classpath = sourceSets.javacpp.runtimeClasspath
     main = 'org.bytedeco.javacpp.tools.Builder'
     args = [
-        '-classpath', sourceSets.main.java.outputDir,
-        '-d', 'src/main/java/',
+        '-d', jniFolder,
         "com.criteo.hnsw.${HnswLibConfigClass}"
     ]
+    workingDir = "build/resources/javacpp/com/criteo/hnsw"
+    outputs.dir(jniFolder)
 }
 
-task compileLib(type: JavaCompile, dependsOn: 'generateJniClass') {
-    source = fileTree(dir: 'src', include: ["**/${HnswLibClass}.java", "**/${HnswLibConfigClass}.java"])
-    destinationDir = file(sourceSets.main.java.outputDir)
-    classpath = files([configurations.javacpp.asPath])
+compileNativeLibJava.dependsOn(generateJniClass)
+
+task('prepareCompilationFolder', type:Copy) {
+    into('build/tmp/compilation')
+    from(sourceSets.nativeLib.output)
+    from(sourceSets.javacpp.output)
+    from(generateJniClass)
 }
 
-task generateLibrary(type: JavaExec, dependsOn: 'compileLib') {
-    classpath = files([configurations.javacpp.asPath])
+task generateLibrary(type: JavaExec) {
+    outputs.dir("build/tmp/compilation")
+    classpath = prepareCompilationFolder.outputs.files +sourceSets.javacpp.compileClasspath
     main = 'org.bytedeco.javacpp.tools.Builder'
     args = [
-        '-classpath', sourceSets.main.java.outputDir,
+        '-classpath', 'build/tmp/compilation',
         '-nodelete',
         "com.criteo.hnsw.${HnswLibClass}"
     ]
 }
-compileJava.dependsOn generateLibrary
-compileTestJava.dependsOn generateLibrary
 
-publishing {
-    publications {
-        hnswjniUberJar(MavenPublication) {
-            groupId group
-            artifactId archivesBaseName
-            version version
-            artifact shadowJar
-        }
-    }
-
-    repositories {
-        maven {
-            credentials {
-                username System.env.MAVEN_USER
-                password System.env.MAVEN_PASSWORD
-            }
-            url = project.publishUrl
-        }
-    }
+processResources {
+    from(generateLibrary)
 }

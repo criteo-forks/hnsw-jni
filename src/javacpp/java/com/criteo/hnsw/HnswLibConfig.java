@@ -8,7 +8,6 @@ import org.bytedeco.javacpp.tools.*;
                 compiler = {"cpp11"},
                 include = {"hnswjava_api.h"}
         ),
-        target = "com.criteo.hnsw",
         global = "com.criteo.hnsw.HnswLib"
 )
 public class HnswLibConfig implements InfoMapper {
