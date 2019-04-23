@@ -1,17 +1,12 @@
-apply plugin: 'java'
-apply plugin: 'application'
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
-    }
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '2.0.1'
+    id 'maven-publish'
 }
- 
-apply plugin: 'com.github.johnrengelman.shadow'
 
 mainClassName = 'com.criteo.hnsw.HelloHnsw'
+group = "com.criteo.hnsw"
 
 repositories {
    jcenter()
@@ -19,10 +14,6 @@ repositories {
 
 configurations {
     javacpp
-}
-ext {
-    artifactId = "hnsw-jni"
-    groupId = "com.criteo.hnsw"
 }
 
 dependencies {
@@ -76,3 +67,11 @@ compileJava.dependsOn generateLibrary
 compileTestJava.dependsOn generateLibrary
 //SET( CMAKE_CXX_FLAGS  "-Ofast -DNDEBUG -std=c++11 -DHAVE_CXX0X -openmp -march=native -fpic -w -fopenmp -ftree-vectorize" )
 //clang++ -I/Library/Java/JavaVirtualMachines/jdk1.8.0_161.jdk/Contents/Home/include -I/Library/Java/JavaVirtualMachines/jdk1.8.0_161.jdk/Contents/Home/include/darwin /Users/d.parfenchik/Dev/hnswlib-jni/build/classes/java/main/com/criteo/hnsw/jniHnswLib.cpp /Users/d.parfenchik/Dev/hnswlib-jni/build/classes/java/main/jnijavacpp.cpp -std=c++11 -march=x86-64 -m64 -O3 -Wl,-rpath,@loader_path/. -Wall -fPIC -dynamiclib -undefined dynamic_lookup -o libjniHnswLib.dylib -framework JavaVM
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+}
