@@ -59,4 +59,8 @@ extern "C" {
     size_t knnQuery(long index, float * vector, size_t * items, float * distances, size_t k) {
         return ((Index<float> *)index)->knnQuery(vector, items, distances, k);
     }
+
+    float getDistanceBetweenLabels(long index, size_t label1, size_t label2) {
+        return ((Index<float> *)index)->getDistanceBetweenLabels(label1, label2);
+    }
 }

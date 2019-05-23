@@ -10,20 +10,24 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 
 public class HnswLibTests {
-    private static float delta = 1.0E-5f;
+    private static float delta = 5.0E-6f;
+    private int randomSeed = 42;
+    private Random rand = new Random(randomSeed);
+
     private float seedValue = 1;
     private int dimension = 100;
     private Function<Integer, Float> getValueById = (id) -> id == 0? 0: seedValue / id;
+    private Function<Integer, Float> getRandomValueById = (id) -> rand.nextFloat();
     private Function<Integer, Float> getNormalizedValueById = i -> i == 0? 0.0f: 1/(float)Math.sqrt(dimension);
     private long nbItems = 12;
     private int M = 16;
     private int efConstruction = 200;
-    private int randomSeed = 42;
 
 
     @Test
@@ -57,6 +61,61 @@ public class HnswLibTests {
 
             HnswLib.destroyIndex(index);
         }
+    }
+
+
+    @Test
+    public void check_Euclidean_index_computes_distance_correctly_simple_embeddings() {
+        int[] dimensionsToTest = new int[] {3, 6, 16, 101, 200};
+        for (int dimension : dimensionsToTest) {
+            long index = HnswLib.createEuclidean(dimension);
+
+            HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
+            populateIndex(index, getValueById, nbItems, dimension);
+
+            for (int i = 0; i < nbItems; i++) {
+                for (int j = i; j < nbItems; j++) {
+                    float distance = HnswLib.getDistanceBetweenLabels(index, i, j);
+                    System.out.println("Distance [" + i + " -> " + j + "]: " + distance);
+                    float expectedDistance = dimension * (float) Math.pow((double) (getValueById.apply(i) - getValueById.apply(j)), 2);
+                    assertRelativeError(distance, expectedDistance);
+                }
+            }
+            HnswLib.destroyIndex(index);
+        }
+    }
+
+    @Test
+    public void check_Euclidean_index_computes_distance_correctly_random_seeded_embeddings() {
+        int[] dimensionsToTest = new int[] {3, 6, 16, 101, 200};
+        for (int dimension : dimensionsToTest) {
+            System.out.println("======= Dimension: " + dimension);
+            long index = HnswLib.createEuclidean(dimension);
+
+            HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
+            populateIndex(index, getRandomValueById, nbItems, dimension);
+
+            for (int i = 0; i < nbItems; i++) {
+                for (int j = i; j < nbItems; j++) {
+                    float distance = HnswLib.getDistanceBetweenLabels(index, i, j);
+                    System.out.println("Distance [" + i + " -> " + j + "]: " + distance);
+                    FloatPointer vector1 = HnswLib.getItem(index, i);
+                    FloatPointer vector2 = HnswLib.getItem(index, j);
+                    float expectedDistance = getL2Distance(vector1, vector2, dimension);
+                    assertRelativeError(distance, expectedDistance);
+                }
+            }
+            HnswLib.destroyIndex(index);
+        }
+    }
+
+    private void assertRelativeError(float distance, float expectedDistance) {
+        float error = 0;
+        if(expectedDistance != 0) {
+            error = Math.abs(expectedDistance - distance)/Math.abs(expectedDistance);
+        }
+        System.out.println("Error: " + error + " (" + expectedDistance + " - " + distance + ") / " + expectedDistance);
+        assertEquals(0, error, delta);
     }
 
     @Test
@@ -193,5 +252,14 @@ public class HnswLibTests {
             vector.put(i, value);
         }
         return vector;
+    }
+
+    private float getL2Distance(FloatPointer vector1, FloatPointer vector2, int dimension) {
+        float res = 0.0f;
+        for(long i = 0; i < dimension; i++) {
+            float t = vector1.get(i) - vector2.get(i);
+            res += t * t;
+        }
+        return res;
     }
 }

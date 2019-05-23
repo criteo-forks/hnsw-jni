@@ -22,7 +22,7 @@ public:
 
     void loadIndex(const std::string &path_to_index) {
         if (appr_alg) {
-            std::cerr<<"Warning: Calling load_index for an already inited index. Old index is being deallocated.";
+            std::cerr<<"Warning: Calling load_index for an already inited index. Old index is being deallocated.\n";
             delete appr_alg;
         }
         appr_alg = new hnswlib::HierarchicalNSW<dist_t>(space, path_to_index, false, 0);
@@ -58,6 +58,21 @@ public:
         memcpy(dst, data_ptr, appr_alg->data_size_);
     }
 
+    data_t* getVectorByLabel(size_t label) {
+        hnswlib::tableint label_c;
+        auto search = appr_alg->label_lookup_.find(label);
+        if (search == appr_alg->label_lookup_.end()) {
+            return nullptr;
+        }
+        label_c = search->second;
+        return (data_t*)appr_alg->getDataByInternalId(label_c);
+    }
+
+    void getVectorByLabelAndCopy(size_t label, data_t* dst) {
+        data_t* data_ptr = getVectorByLabel(label);
+        memcpy(dst, data_ptr, appr_alg->data_size_);
+    }
+
     std::vector<size_t> getIdsList() {
         std::vector<size_t> ids;
 
@@ -89,6 +104,12 @@ public:
             result.pop();
         }
         return nbResults;
+    }
+
+    dist_t getDistanceBetweenLabels(size_t label1, size_t label2) {
+        dist_t* vector1 = getVectorByLabel(label1);
+        dist_t* vector2 = getVectorByLabel(label2);
+        return appr_alg->fstdistfunc_(vector1, vector2, appr_alg->dist_func_param_);
     }
 
     hnswlib::SpaceInterface<float> *space;
