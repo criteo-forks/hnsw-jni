@@ -1,11 +1,34 @@
 #include <iostream>
 #include "hnswlib.h"
 
+enum Distance {
+    Euclidean = 1,
+    Angular = 2,
+    InnerProduct = 3
+};
+
 template<typename dist_t, typename data_t=float>
 class Index {
 public:
     Index(hnswlib::SpaceInterface<float> *space, const int dim, bool normalize = false) :
-            space(space), dim(dim), normalize(normalize) {
+        space(space), dim(dim), normalize(normalize) {
+        appr_alg = NULL;
+    }
+
+    Index(Distance distance, const int dim) : dim(dim) {
+        if(distance == Euclidean) {
+            space = new hnswlib::L2Space(dim);
+        }
+        else if (distance == Angular) {
+            space = new hnswlib::InnerProductSpace(dim);
+            normalize = true;
+        }
+        else if (distance == InnerProduct) {
+            space = new hnswlib::InnerProductSpace(dim);
+        }
+        else {
+            throw std::runtime_error("Distance not supported: " + std::to_string(distance));
+        }
         appr_alg = NULL;
     }
 
@@ -85,7 +108,7 @@ public:
     size_t knnQuery(dist_t * vector, size_t * items, dist_t * distances, size_t k) {
         dist_t* vector_data = vector;
         std::vector<dist_t> norm_array(dim);
-        if(normalize) {                    
+        if(normalize) {
             normalizeVector(vector_data, norm_array.data());
             vector_data = norm_array.data();
         }
