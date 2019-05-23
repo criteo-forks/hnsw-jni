@@ -88,6 +88,8 @@ task generateLibrary(type: JavaExec) {
     args = [
         '-classpath', 'build/tmp/compilation',
         '-nodelete',
+        '-Xcompiler', '-mavx',
+        '-Xcompiler', '-msse4',
         "com.criteo.hnsw.${HnswLibClass}"
     ]
 }
