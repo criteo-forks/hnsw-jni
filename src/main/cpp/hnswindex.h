@@ -4,7 +4,8 @@
 enum Distance {
     Euclidean = 1,
     Angular = 2,
-    InnerProduct = 3
+    InnerProduct = 3,
+    Kendall = 4
 };
 
 template<typename dist_t, typename data_t=float>
@@ -25,6 +26,9 @@ public:
         }
         else if (distance == InnerProduct) {
             space = new hnswlib::InnerProductSpace(dim);
+        }
+        else if (distance == Kendall) {
+            space = new hnswlib::KendallSpace(dim);
         }
         else {
             throw std::runtime_error("Distance not supported: " + std::to_string(distance));

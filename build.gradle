@@ -1,6 +1,13 @@
 plugins {
+    id 'java'
     id 'java-library'
     id 'com.criteo.moab-module'
+}
+
+apply plugin : 'java'
+
+test {
+    testLogging.showStandardStreams = true
 }
 
 ext {

@@ -20,6 +20,12 @@ extern "C" {
         return (long)new Index<float>(space, dim, normalize);
     }
 
+    long createKendall(int dim) {
+        hnswlib::SpaceInterface<float> *space = new hnswlib::KendallSpace(dim);
+        bool normalize=false;
+        return (long)new Index<float>(space, dim, normalize);
+    }
+
     void destroyIndex(long index) {
         delete ((Index<float> *)index);
     }

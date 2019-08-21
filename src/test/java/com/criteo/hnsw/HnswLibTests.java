@@ -109,6 +109,35 @@ public class HnswLibTests {
         }
     }
 
+    @Test
+    public void check_Kendall_index_computes_distance_correctly_random_seeded_embeddings() {
+        
+        System.out.println("======= Dimension: " + 4);
+        long index = HnswLib.createKendall(4);
+
+        HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
+        // populateIndex(index, getRandomValueById, nbItems, dimension);
+        FloatPointer vector1 = new FloatPointer(4);
+        FloatPointer vector2 = new FloatPointer(4);
+        vector1.put(0, 1.0f);
+        vector1.put(1, 2.0f);
+        vector1.put(2, 3.0f);
+        vector1.put(3, 4.0f);
+        vector2.put(0, 1.0f);
+        vector2.put(1, 3.0f);
+        vector2.put(2, 2.0f);
+        vector2.put(3, 4.0f);
+
+        HnswLib.addItem(index, vector1, 1);
+        HnswLib.addItem(index, vector2, 2);
+
+        float distance = HnswLib.getDistanceBetweenLabels(index, 1, 2);
+        System.out.println("Distance: " + distance);
+        float expectedDistance = 0.66666666f;
+        assertRelativeError(distance, expectedDistance);
+        HnswLib.destroyIndex(index);
+    }
+
     private void assertRelativeError(float distance, float expectedDistance) {
         float error = 0;
         if(expectedDistance != 0) {
