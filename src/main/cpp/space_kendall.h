@@ -25,7 +25,7 @@ namespace hnswlib {
             }
         }
         res /= qty*(qty-1)/2;
-        return res;
+        return (1.0f - res);
 
     }
 

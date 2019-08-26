@@ -133,7 +133,7 @@ public class HnswLibTests {
 
         float distance = HnswLib.getDistanceBetweenLabels(index, 1, 2);
         System.out.println("Distance: " + distance);
-        float expectedDistance = 0.66666666f;
+        float expectedDistance = (1.0f - 0.66666666f);
         assertRelativeError(distance, expectedDistance);
         HnswLib.destroyIndex(index);
     }
