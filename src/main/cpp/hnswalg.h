@@ -17,7 +17,6 @@
 
 
 namespace hnswlib {
-    typedef unsigned int tableint;
     typedef unsigned int linklistsizeint;
 
     template<typename dist_t>
@@ -753,7 +752,7 @@ namespace hnswlib {
             return cur_c;
         };
 
-        std::priority_queue<std::pair<dist_t, labeltype >> searchKnn(const void *query_data, size_t k) const {
+        std::priority_queue<std::pair<dist_t, tableint>> searchKnn(const void *query_data, size_t k) const {
             tableint currObj = enterpoint_node_;
             dist_t curdist = fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
 
@@ -783,13 +782,12 @@ namespace hnswlib {
 
             std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates = searchBaseLayerST(
                     currObj, query_data, std::max(ef_,k));
-            std::priority_queue<std::pair<dist_t, labeltype >> results;
+            std::priority_queue<std::pair<dist_t, tableint >> results;
             while (top_candidates.size() > k) {
                 top_candidates.pop();
             }
             while (top_candidates.size() > 0) {
-                std::pair<dist_t, tableint> rez = top_candidates.top();
-                results.push(std::pair<dist_t, labeltype>(rez.first, getExternalLabel(rez.second)));
+                results.push(top_candidates.top());
                 top_candidates.pop();
             }
             return results;

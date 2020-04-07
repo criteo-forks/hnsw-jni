@@ -9,7 +9,7 @@ namespace hnswlib {
     Kendall(const void *pVect1, const void *pVect2, const void *qty_ptr) {
         size_t qty = *((size_t *) qty_ptr);
         float res = 0;
-        float v1, v2, u1, u2; 
+        float v1, v2, u1, u2;
         for (unsigned i = 0; i < qty-1; i++) {
             for (unsigned j = i+1; j < qty; j++) {
                 v1 = ((float *) pVect1)[i];
@@ -26,7 +26,6 @@ namespace hnswlib {
         }
         res /= qty*(qty-1)/2;
         return (1.0f - res);
-
     }
 
     class KendallSpace : public SpaceInterface<float> {

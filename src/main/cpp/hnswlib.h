@@ -8,6 +8,10 @@
 #endif
 #endif
 
+#ifdef __F16C__
+#define USE_F16C
+#endif
+
 #if defined(USE_AVX) || defined(USE_SSE)
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -29,6 +33,7 @@
 
 namespace hnswlib {
     typedef size_t labeltype;
+    typedef unsigned int tableint;
 
     template<typename T>
     static void writeBinaryPOD(std::ostream &out, const T &podRef) {
@@ -61,7 +66,7 @@ namespace hnswlib {
     class AlgorithmInterface {
     public:
         virtual void addPoint(void *datapoint, labeltype label)=0;
-        virtual std::priority_queue<std::pair<dist_t, labeltype >> searchKnn(const void *, size_t) const = 0;
+        virtual std::priority_queue<std::pair<dist_t, hnswlib::tableint >> searchKnn(const void *, size_t) const = 0;
         virtual void saveIndex(const std::string &location)=0;
         virtual ~AlgorithmInterface(){
         }
@@ -71,6 +76,8 @@ namespace hnswlib {
 }
 
 #include "space_l2.h"
+#include "float16.h"
+#include "space_l2_f16.h"
 #include "space_ip.h"
 #include "space_kendall.h"
 #include "bruteforce.h"

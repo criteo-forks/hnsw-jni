@@ -1,12 +1,11 @@
 package com.criteo.hnsw;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Random;
 
 public class HelloHnsw {
     public static Random r = new Random();
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
         int dimension = 100;
         int nbItems = 15000;
         int M = 16;
@@ -14,7 +13,7 @@ public class HelloHnsw {
 
         HnswIndex index = HnswIndex.create(Metrics.Euclidean, dimension);
 
-        index.initNewIndex(nbItems, M, efConstruction);
+        index.initNewIndex(nbItems, M, efConstruction, 42);
         for (int i = 0; i < nbItems; i++) {
             float[] vector = getRandomVector(dimension);
             index.addItem(vector, i);
@@ -30,10 +29,10 @@ public class HelloHnsw {
 
         for (int i = 0; i < 20; i++) {
             long queryId = ids[i];
-            float[] query = index.getItem(queryId);
-            KnnResult[] results = index.knnQuery(query, 3);
-            for (KnnResult result : results) {
-                System.out.println(queryId + " -> " + result.getItem() + " distance: " + result.getDistance());
+            FloatByteBuf query = index.getItem(queryId);
+            KnnResult result = index.search(query, 3);
+            for (int j = 0; j < result.resultCount; j++) {
+                System.out.println(queryId + " -> " + result.resultItems[i] + " distance: " + result.resultDistances[i]);
             }
         }
         index.unload();

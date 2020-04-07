@@ -1,29 +1,46 @@
 package com.criteo.hnsw;
 
-import org.bytedeco.javacpp.FloatPointer;
-import org.bytedeco.javacpp.SizeTPointer;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
-import java.util.Random;
+import java.nio.ByteBuffer;
 
 public class HnswIndex {
     private long pointer;
+    private int dimension;
+
 
     public static HnswIndex create(String metric, int dimension) {
         long pointer;
         switch (metric) {
             case Metrics.Angular: pointer = HnswLib.createAngular(dimension); break;
             case Metrics.Euclidean: pointer = HnswLib.createEuclidean(dimension); break;
-            case Metrics.DotProduct: pointer = HnswLib.createDotProduct(dimension); break;
+            case Metrics.DotProduct: pointer = HnswLib.createInnerProduct(dimension); break;
             case Metrics.Kendall: pointer = HnswLib.createKendall(dimension); break;
             default: throw new UnsupportedOperationException();
         }
 
-        return new HnswIndex(pointer);
+        return new HnswIndex(pointer, dimension);
     }
 
-    private HnswIndex(long pointer) {
+    public static HnswIndex createF16(String metric, int dimension) {
+        long pointer;
+        switch (metric) {
+            case Metrics.Euclidean: pointer = HnswLib.createEuclideanF16(dimension); break;
+            default: throw new UnsupportedOperationException();
+        }
+
+        return new HnswIndex(pointer, dimension);
+    }
+
+    public HnswIndex(long pointer, int dimension) {
         this.pointer = pointer;
+        this.dimension = dimension;
+    }
+
+    public long getPointer() {
+        return pointer;
+    }
+
+    public long getDimension() {
+        return dimension;
     }
 
     public long load(String path) {
@@ -39,10 +56,6 @@ public class HnswIndex {
         HnswLib.saveIndex(pointer, path);
     }
 
-    public void initNewIndex(long maxElements, long M, long efConstruction) {
-        initNewIndex(maxElements, M, efConstruction, new Random().nextInt());
-    }
-
     public void initNewIndex(long maxElements, long M, long efConstruction, long randomSeed) {
         HnswLib.initNewIndex(pointer, maxElements, M, efConstruction, randomSeed);
     }
@@ -52,7 +65,7 @@ public class HnswIndex {
     }
 
     public void unload() {
-        HnswLib.destroyIndex(pointer);
+        HnswLib.destroy(pointer);
     }
 
     public long getNbItems() {
@@ -60,33 +73,50 @@ public class HnswIndex {
     }
 
     public long[] getIds() {
-        SizeTPointer ids = HnswLib.getIdsList(pointer);
-        long[] idsArr = new long[(int)ids.limit()];
-        for(int i = 0; i < idsArr.length; i ++) {
-            idsArr[i] = ids.get(i);
-        }
-        return idsArr;
+        return HnswLib.getLabels(this.pointer);
     }
 
-    public float[] getItem(long id) {
-        FloatPointer vector = HnswLib.getItem(pointer, id);
-        float[] vectorArr = new float[(int)vector.limit()];
-        for(int i = 0; i < vectorArr.length; i ++) {
-            vectorArr[i] = vector.get(i);
+    public FloatByteBuf getItem(long label) {
+        ByteBuffer buffer = HnswLib.getItem(this.pointer, label);
+
+        if (buffer != null) {
+            return FloatByteBuf.wrappedBuffer(buffer);
+        } else {
+            return null;
         }
-        return vectorArr;
     }
 
-    public KnnResult[] knnQuery(float[] vector, long k) {
-        SizeTPointer items = new SizeTPointer(k);
-        FloatPointer distances = new FloatPointer(k);
-        FloatPointer query = new FloatPointer(vector);
-        int resultSize = (int)HnswLib.knnQuery(pointer, query, items, distances, k);
+    public KnnResult search(FloatByteBuf query, int k) throws Exception {
+        try(LongByteBuf result_item = new LongByteBuf(k)) {
+            try(FloatByteBuf result_distance = new FloatByteBuf(k)) {
+                ByteBuffer[] result_vectors = new ByteBuffer[k];
+                int resultCount = HnswLib.search(pointer, query.asFloatBuffer(), k,
+                        result_item.asLongBuffer(),
+                        result_distance.asFloatBuffer(),
+                        result_vectors
+                );
+                result_item.writerIndex(resultCount);
+                result_distance.writerIndex(resultCount);
 
-        KnnResult[] results = new KnnResult[resultSize];
-        for (int i = 0; i < resultSize; i++) {
-            results[i] = new KnnResult(items.get(i), distances.get(i));
+                KnnResult result = new KnnResult();
+                result.resultCount = resultCount;
+                result.resultDistances = new float[resultCount];
+                result.resultItems = new long[resultCount];
+                result.resultVectors = new FloatByteBuf[resultCount];
+
+                for (int i = 0; i < resultCount; i++) {
+                    result.resultDistances[i] = result_distance.read();
+                    result.resultItems[i] = result_item.read();
+                    result.resultVectors[i] = FloatByteBuf.wrappedBuffer(result_vectors[i]);
+                }
+
+                return result;
+            }
         }
-        return results;
     }
+
+    public float getDistance(FloatByteBuf vector1, FloatByteBuf vector2) {
+        return HnswLib.getDistanceBetweenVectors(pointer, vector1.asFloatBuffer(), vector2.asFloatBuffer());
+    }
+
 }

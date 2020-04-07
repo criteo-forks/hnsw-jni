@@ -1,99 +1,79 @@
-plugins {
-    id 'java'
-    id 'java-library'
-    id 'com.criteo.moab-module'
-}
+import org.apache.tools.ant.taskdefs.condition.Os
 
-apply plugin : 'java'
+description = "Hnswlib JNI bindings"
 
-test {
-    testLogging.showStandardStreams = true
-}
+apply plugin: 'java-library'
+apply plugin: 'com.criteo.moab-module'
+apply plugin: 'com.criteo.shadowed-library'
+
+apply from: parentPomsFile('java-parent/parent.gradle')
 
 ext {
-    jniFolder = "$buildDir/generated/jni/java"
+    artifactId = "hnswlib-jni"
+    groupId = "com.criteo.hnsw"
+    platform = Os.isFamily(Os.FAMILY_WINDOWS) ? "windows" : "unix"
+    cmakeWorkdir = file("$buildDir/cmake_$platform")
+    nativeOutput =  file("$buildDir/jniLibs")
+    netty_buffer_version="4.1.34.Final"
 }
 
-repositories {
-   jcenter()
+
+libraries {
+    library "org.apache.commons:commons-lang3:3.8.1"
+    library "io.netty:netty-buffer:${netty_buffer_version}"
+}
+
+task cmake(type: CrossPlatformExec) {
+    inputs.file('CMakeLists.txt')
+    inputs.file("cmake-unix.sh")
+    inputs.files('src/main/cpp')
+    inputs.files('src/main/includes')
+    inputs.files('src/test/cpp')
+    outputs.dir(nativeOutput)
+    doFirst {
+        cmakeWorkdir.mkdirs()
+    }
+    executable "$projectDir/cmake-${platform}"
+    args "$projectDir", "-DCMAKE_BUILD_TYPE=Release"
+    environment 'CMAKE_LIBRARY_OUTPUT_DIRECTORY', "$nativeOutput/native"
+    environment 'CMAKE_RUNTIME_OUTPUT_DIRECTORY', "$nativeOutput/native"
+    workingDir cmakeWorkdir
+}
+
+task cmakeTest(type: CrossPlatformExec) {
+    dependsOn cmake
+    environment 'CTEST_OUTPUT_ON_FAILURE', "1"
+    executable 'make'
+    args "test"
+    workingDir cmakeWorkdir
+}
+
+test.finalizedBy cmakeTest
+
+// This task will generate com_criteo_recommendation_knn_HnswLib.h
+task generateJniHeaders(type:Exec) {
+    dependsOn classes
+    def jniClass = "com.criteo.hnsw.HnswLib"
+    def outputPath = "src/main/cpp/com_criteo_hnsw_HnswLib.h"
+    executable "javah"
+    args "-o", outputPath, "-classpath", sourceSets.main.output.classesDirs.asPath, jniClass
 }
 
 sourceSets {
-    javacpp
-
-    nativeLib {
-        java {
-            srcDir jniFolder
-        }
+    main {
+        output.dir(nativeOutput, builtBy: cmake)
     }
-}
-
-group = "com.criteo.hnsw"
-
-configurations {
-    nativeLibImplementation
 }
 
 dependencies {
-    nativeLibImplementation files(sourceSets.javacpp.runtimeClasspath)
-    api files(sourceSets.nativeLib.runtimeClasspath)
-    javacppImplementation group: 'org.bytedeco', name: 'javacpp', version: '1.5'
-    testImplementation 'junit:junit:4.12'
+    api libraries["org.apache.commons:commons-lang3"]
+    api libraries["io.netty:netty-buffer"]
+    testImplementation libraries["junit:junit"]
 }
 
-def HnswLibConfigClass= "HnswLibConfig"
-def HnswLibClass= "HnswLib"
-
-processJavacppResources {
-    from('src/main/cpp') {
-        into 'com/criteo/hnsw'
-    }
-}
-
-task('runHelloWorld', type:JavaExec) {
-    doFirst {
-        project.mkdir('build/run/bin')
-    }
-    group = "Execution"
-    description = "Sample program"
-    classpath = sourceSets.main.runtimeClasspath
-    main = 'com.criteo.hnsw.HelloHnsw'
-    workingDir = 'build/run'
-}
-
-task generateJniClass(type: JavaExec) {
-    classpath = sourceSets.javacpp.runtimeClasspath
-    main = 'org.bytedeco.javacpp.tools.Builder'
-    args = [
-        '-d', jniFolder,
-        "com.criteo.hnsw.${HnswLibConfigClass}"
-    ]
-    workingDir = "build/resources/javacpp/com/criteo/hnsw"
-    outputs.dir(jniFolder)
-}
-
-compileNativeLibJava.dependsOn(generateJniClass)
-
-task('prepareCompilationFolder', type:Copy) {
-    into('build/tmp/compilation')
-    from(sourceSets.nativeLib.output)
-    from(sourceSets.javacpp.output)
-    from(generateJniClass)
-}
-
-task generateLibrary(type: JavaExec) {
-    outputs.dir("build/tmp/compilation")
-    classpath = prepareCompilationFolder.outputs.files +sourceSets.javacpp.compileClasspath
-    main = 'org.bytedeco.javacpp.tools.Builder'
-    args = [
-        '-classpath', 'build/tmp/compilation',
-        '-nodelete',
-        '-Xcompiler', '-mavx',
-        '-Xcompiler', '-msse4',
-        "com.criteo.hnsw.${HnswLibClass}"
-    ]
-}
-
-processResources {
-    from(generateLibrary)
+shadowJar {
+    zip64 true
+    // There is collision with spark 2.2 netty version
+    relocate("io.netty.buffer", "hnsw.io.netty.buffer")
+    relocate("io.netty.util", "hnsw.io.netty.util")
 }

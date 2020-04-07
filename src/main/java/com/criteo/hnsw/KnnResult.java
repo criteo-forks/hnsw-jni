@@ -1,20 +1,12 @@
 package com.criteo.hnsw;
 
 public class KnnResult {
-    private long item;
-    private float distance;
+    public int resultCount;
+    public long[] resultItems;
+    public float[] resultDistances;
+    public FloatByteBuf[] resultVectors;
 
-    public long getItem() {
-        return item;
-    }
+    public KnnResult() {
 
-    public float getDistance() {
-        return distance;
-    }
-
-    public KnnResult(long item, float distance) {
-        this.item = item;
-        this.distance = distance;
     }
 }
-
