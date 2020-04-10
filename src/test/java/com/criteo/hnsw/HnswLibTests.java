@@ -34,9 +34,9 @@ public class HnswLibTests {
     @Test
     public void create_indices_save_and_load() throws IOException {
         Map<Long, Function<Integer, Float>> indices = new HashMap<Long, Function<Integer, Float>>() {{
-            put(HnswLib.createEuclidean(dimension), getValueById);
-            put(HnswLib.createInnerProduct(dimension), getValueById);
-            put(HnswLib.createAngular(dimension), getNormalizedValueById);
+            put(HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val), getValueById);
+            put(HnswLib.create(dimension, Metrics.DotProductVal, Precision.Float32Val), getValueById);
+            put(HnswLib.create(dimension, Metrics.AngularVal, Precision.Float32Val), getNormalizedValueById);
         }};
 
         File dir = Files.createTempDirectory("HnswLib").toFile();
@@ -69,7 +69,7 @@ public class HnswLibTests {
     public void check_Euclidean_index_computes_distance_correctly_simple_embeddings() {
         int[] dimensionsToTest = new int[] {3, 6, 16, 101, 200};
         for (int dimension : dimensionsToTest) {
-            long index = HnswLib.createEuclidean(dimension);
+            long index = HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val);
 
             HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
             populateIndex(index, getValueById, nbItems, dimension);
@@ -77,7 +77,7 @@ public class HnswLibTests {
             for (int i = 0; i < nbItems; i++) {
                 for (int j = i; j < nbItems; j++) {
                     float distance = HnswLib.getDistanceBetweenLabels(index, i, j);
-                    float expectedDistance = dimension * (float) Math.pow((double) (getValueById.apply(i) - getValueById.apply(j)), 2);
+                    float expectedDistance = dimension * (float) Math.pow((getValueById.apply(i) - getValueById.apply(j)), 2);
                     assertRelativeError(distance, expectedDistance);
                 }
             }
@@ -89,7 +89,7 @@ public class HnswLibTests {
     public void check_Euclidean_index_computes_distance_correctly_random_seeded_embeddings() {
         int[] dimensionsToTest = new int[] {3, 6, 16, 101, 200};
         for (int dimension : dimensionsToTest) {
-            long index = HnswLib.createEuclidean(dimension);
+            long index = HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val);
 
             HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
             populateIndex(index, getRandomValueById, nbItems, dimension);
@@ -118,7 +118,7 @@ public class HnswLibTests {
     @Test
     public void check_Euclidean_index_returns_correct_neighbours() {
         int k = (int)nbItems;
-        long index = HnswLib.createEuclidean(dimension);
+        long index = HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val);
 
         HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
         populateIndex(index, getValueById, nbItems, dimension);
@@ -149,7 +149,7 @@ public class HnswLibTests {
     public void check_no_error_happens_if_less_items_is_returned_than_k() {
         int biggerK = (int)nbItems * 2;
 
-        long index = HnswLib.createEuclidean(dimension);
+        long index = HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val);
 
         HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
         populateIndex(index, getValueById, nbItems, dimension);
@@ -177,7 +177,7 @@ public class HnswLibTests {
     @Test @Ignore("Inner product of A and B is implemented in hnswlib (space_ip.h) as A*B = 1 - (A1*B1 + A2*B2 + â€¦)")
     public void check_DotProduct_index_returns_correct_neighbours() {
         int k = (int)nbItems;
-        long index = HnswLib.createInnerProduct(dimension);
+        long index = HnswLib.create(dimension, Metrics.DotProductVal, Precision.Float32Val);
 
         HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
         populateIndex(index, getValueById, nbItems, dimension);
@@ -207,7 +207,7 @@ public class HnswLibTests {
 
     @Test
     public void check_Kendall_index_computes_distance_correctly() {
-        long index = HnswLib.createKendall(4);
+        long index = HnswLib.create(4, Metrics.KendallVal, Precision.Float32Val);
         HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
         float[] vector1 = new float[] {1, 2, 3, 4};
         float[] vector2 = new float[] {1, 3, 2, 4};
@@ -231,8 +231,8 @@ public class HnswLibTests {
 
     private void assertAllVectorsMatchExpected(long index, int size, Function<Integer, Float> getExpectedValue) {
         long[] ids = HnswLib.getLabels(index);
-        for (int i = 0; i < ids.length; i++) {
-            int id = (int)ids[i];
+        for (long l : ids) {
+            int id = (int) l;
             float expectedValue = getExpectedValue.apply(id);
             FloatByteBuf item = FloatByteBuf.wrappedBuffer(HnswLib.getItem(index, id));
             assertAllValuesEqual(item, size, expectedValue);

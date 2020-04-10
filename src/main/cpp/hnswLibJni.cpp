@@ -4,47 +4,11 @@
 
 /*
  * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createAngular
+ * Method:    create
  * Signature: (I)J
  */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createAngular(JNIEnv *env, jclass jobj, jint dim) {
-    return (jlong)new Index<float>(Angular, dim, Float32);
-}
-
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createEuclidean
- * Signature: (I)J
- */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createEuclidean(JNIEnv *env, jclass jobj, jint dim) {
-    return (jlong)new Index<float>(Euclidean, dim, Float32);
-}
-
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createInnerProduct
- * Signature: (I)J
- */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createInnerProduct(JNIEnv *env, jclass jobj, jint dim) {
-    return (jlong)new Index<float>(InnerProduct, dim, Float32);
-}
-
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createKendall
- * Signature: (I)J
- */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createKendall(JNIEnv *env, jclass jobj, jint dim) {
-    return (jlong)new Index<float>(Kendall, dim, Float32);
-}
-
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createEuclideanF16
- * Signature: (I)J
- */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createEuclideanF16(JNIEnv *env, jclass jobj, jint dim) {
-    return (jlong)new Index<float>(Euclidean, dim, Float16);
+JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_create(JNIEnv *env, jclass jobj, jint dim, jint distance, jint precision) {
+    return (jlong)new Index<float>((Distance)distance, dim, (Precision)precision);
 }
 
 /*

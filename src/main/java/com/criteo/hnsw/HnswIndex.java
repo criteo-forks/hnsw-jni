@@ -5,34 +5,23 @@ import java.nio.ByteBuffer;
 public class HnswIndex {
     private long pointer;
     private int dimension;
-
+    private String precision;
 
     public static HnswIndex create(String metric, int dimension) {
-        long pointer;
-        switch (metric) {
-            case Metrics.Angular: pointer = HnswLib.createAngular(dimension); break;
-            case Metrics.Euclidean: pointer = HnswLib.createEuclidean(dimension); break;
-            case Metrics.DotProduct: pointer = HnswLib.createInnerProduct(dimension); break;
-            case Metrics.Kendall: pointer = HnswLib.createKendall(dimension); break;
-            default: throw new UnsupportedOperationException();
-        }
-
-        return new HnswIndex(pointer, dimension);
+        return create(metric, dimension, Precision.Float32);
     }
 
-    public static HnswIndex createF16(String metric, int dimension) {
-        long pointer;
-        switch (metric) {
-            case Metrics.Euclidean: pointer = HnswLib.createEuclideanF16(dimension); break;
-            default: throw new UnsupportedOperationException();
-        }
-
-        return new HnswIndex(pointer, dimension);
+    public static HnswIndex create(String metric, int dimension, String precision) {
+        int metricVal = Metrics.getVal(metric);
+        int precisionVal = Precision.getVal(precision);
+        long pointer = HnswLib.create(dimension, metricVal, precisionVal);
+        return new HnswIndex(pointer, dimension, precision);
     }
 
-    public HnswIndex(long pointer, int dimension) {
+    public HnswIndex(long pointer, int dimension, String precision) {
         this.pointer = pointer;
         this.dimension = dimension;
+        this.precision = precision;
     }
 
     public long getPointer() {
@@ -41,6 +30,10 @@ public class HnswIndex {
 
     public long getDimension() {
         return dimension;
+    }
+
+    public String getPrecision() {
+        return precision;
     }
 
     public long load(String path) {

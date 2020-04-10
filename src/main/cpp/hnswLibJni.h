@@ -7,45 +7,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createAngular
- * Signature: (I)J
- */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createAngular
-  (JNIEnv *, jclass, jint);
 
 /*
  * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createEuclidean
+ * Method:    create
  * Signature: (I)J
  */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createEuclidean
-  (JNIEnv *, jclass, jint);
-
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createInnerProduct
- * Signature: (I)J
- */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createInnerProduct
-  (JNIEnv *, jclass, jint);
-
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createKendall
- * Signature: (I)J
- */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createKendall
-  (JNIEnv *, jclass, jint);
-
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    createEuclideanF16
- * Signature: (I)J
- */
-JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_createEuclideanF16
-  (JNIEnv *, jclass, jint);
+JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_create
+  (JNIEnv *, jclass, jint, jint, jint);
 
 /*
  * Class:     com_criteo_recommendation_knn_HnswLib

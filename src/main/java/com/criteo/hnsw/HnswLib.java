@@ -31,15 +31,7 @@ public class HnswLib {
         }
     }
 
-    public static native long createAngular(int dim);
-
-    public static native long createEuclidean(int dim);
-
-    public static native long createInnerProduct(int dim);
-
-    public static native long createKendall(int dim);
-
-    public static native long createEuclideanF16(int dim);
+    public static native long create(int dim, int distance, int precision);
 
     public static native void destroy(long pointer);
 

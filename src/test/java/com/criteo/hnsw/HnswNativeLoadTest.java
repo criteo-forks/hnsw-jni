@@ -12,25 +12,25 @@ public class HnswNativeLoadTest {
 
     @Test
     public void creating_Angular() {
-        long pointer = HnswLib.createAngular(dim);
+        long pointer = HnswLib.create(dim, Metrics.AngularVal, Precision.Float32Val);
         HnswLib.destroy(pointer);
     }
 
     @Test
     public void creating_Euclidean() {
-        long pointer = HnswLib.createEuclidean(dim);
+        long pointer = HnswLib.create(dim, Metrics.EuclideanVal, Precision.Float32Val);
         HnswLib.destroy(pointer);
     }
 
     @Test
     public void creating_InnerProduct() {
-        long pointer = HnswLib.createInnerProduct(dim);
+        long pointer = HnswLib.create(dim, Metrics.DotProductVal, Precision.Float32Val);
         HnswLib.destroy(pointer);
     }
 
     @Test
     public void getting_nb_items_returns_0_when_empty() {
-        long pointer = HnswLib.createEuclidean(dim);
+        long pointer = HnswLib.create(dim, Metrics.EuclideanVal, Precision.Float32Val);
         HnswLib.initNewIndex(pointer, 100, M, efConstruction, randomSeed);
         assertEquals(0, HnswLib.getNbItems(pointer));
         HnswLib.destroy(pointer);
@@ -38,7 +38,7 @@ public class HnswNativeLoadTest {
 
     @Test
     public void adding_items_affects_number_of_items() {
-        long pointer = HnswLib.createEuclidean(dim);
+        long pointer = HnswLib.create(dim, Metrics.EuclideanVal, Precision.Float32Val);
         int nbItems = 99;
         HnswLib.initNewIndex(pointer, nbItems, M, efConstruction, randomSeed);
         for(int i = 0; i < nbItems; i++) {
