@@ -32,11 +32,23 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_initNewIndex
 
 /*
  * Class:     com_criteo_recommendation_knn_HnswLib
+ * Method:    initBruteforce
+ * Signature: (JJ)V
+ */
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_initBruteforce
+(JNIEnv *env, jclass jobj, jlong pointer, jlong max_elements) {
+    ((Index<float> *)pointer)->initBruteforce((size_t)max_elements);
+}
+
+/*
+ * Class:     com_criteo_recommendation_knn_HnswLib
  * Method:    setEf
  * Signature: (JJ)V
  */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_setEf(JNIEnv *env, jclass jobj, jlong pointer, jlong ef) {
-    ((Index<float> *)pointer)->appr_alg->ef_ = (size_t) ef;
+    auto index = (Index<float> *)pointer;
+    auto hnsw = (hnswlib::HierarchicalNSW<float> *)index->appr_alg;
+    hnsw->ef_ = (size_t) ef;
 }
 
 /*
@@ -58,6 +70,17 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_saveIndex(JNIEnv *env, jclas
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_loadIndex(JNIEnv *env, jclass jobj, jlong pointer, jstring path) {
     const char *path_to_index = env->GetStringUTFChars(path, NULL);
     ((Index<float> *)pointer)->loadIndex(path_to_index);
+    env->ReleaseStringUTFChars(path, path_to_index);
+}
+
+/*
+ * Class:     com_criteo_recommendation_knn_HnswLib
+ * Method:    loadBruteforce
+ * Signature: (JLjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_loadBruteforce(JNIEnv *env, jclass jobj, jlong pointer, jstring path) {
+    const char *path_to_index = env->GetStringUTFChars(path, NULL);
+    ((Index<float> *)pointer)->loadBruteforce(path_to_index);
     env->ReleaseStringUTFChars(path, path_to_index);
 }
 

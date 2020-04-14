@@ -36,7 +36,7 @@ namespace hnswlib {
         DISTFUNC <dist_t> fstdistfunc_;
         void *dist_func_param_;
 
-        std::unordered_map<labeltype,size_t > dict_external_to_internal;
+        std::unordered_map<labeltype, tableint> dict_external_to_internal;
 
         void addPoint(void *datapoint, labeltype label) {
             if(dict_external_to_internal.count(label))
@@ -68,19 +68,17 @@ namespace hnswlib {
         }
 
 
-        std::priority_queue<std::pair<dist_t, labeltype >> searchKnn(const void *query_data, size_t k) const {
-            std::priority_queue<std::pair<dist_t, labeltype >> topResults;
+        std::priority_queue<std::pair<dist_t, tableint >> searchKnn(const void *query_data, size_t k) const {
+            std::priority_queue<std::pair<dist_t, tableint >> topResults;
             for (int i = 0; i < k; i++) {
                 dist_t dist = fstdistfunc_(query_data, data_ + size_per_element_ * i, dist_func_param_);
-                topResults.push(std::pair<dist_t, labeltype>(dist, *((labeltype *) (data_ + size_per_element_ * i +
-                                                                                    data_size_))));
+                topResults.push(std::pair<dist_t, tableint>(dist, i));
             }
             dist_t lastdist = topResults.top().first;
             for (int i = k; i < cur_element_count; i++) {
                 dist_t dist = fstdistfunc_(query_data, data_ + size_per_element_ * i, dist_func_param_);
                 if (dist <= lastdist) {
-                    topResults.push(std::pair<dist_t, labeltype>(dist, *((labeltype *) (data_ + size_per_element_ * i +
-                                                                                        data_size_))));
+                    topResults.push(std::pair<dist_t, tableint>(dist, i));
                     if (topResults.size() > k)
                         topResults.pop();
                     lastdist = topResults.top().first;
@@ -123,8 +121,26 @@ namespace hnswlib {
 
             input.close();
 
+            for (size_t i = 0; i < cur_element_count; i++) {
+                dict_external_to_internal[getExternalLabel(i)]=i;
+            }
             return;
         }
 
+        inline char *getDataByInternalId(tableint internal_id) const {
+            return (data_ + internal_id * size_per_element_);
+        }
+
+        inline labeltype getExternalLabel(tableint internal_id) const {
+            return *((labeltype *) (data_ + size_per_element_ * internal_id + data_size_));
+        }
+
+        inline size_t getNbItems() const {
+            return cur_element_count;
+        }
+
+        inline std::unordered_map<labeltype, tableint> * getLabelLookup() {
+            return &dict_external_to_internal;
+        }
     };
 }

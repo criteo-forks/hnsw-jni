@@ -34,6 +34,14 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_initNewIndex
 
 /*
  * Class:     com_criteo_recommendation_knn_HnswLib
+ * Method:    initBruteforce
+ * Signature: (JJJJJ)V
+ */
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_initBruteforce
+  (JNIEnv *, jclass, jlong, jlong);
+
+/*
+ * Class:     com_criteo_recommendation_knn_HnswLib
  * Method:    setEf
  * Signature: (JJ)V
  */
@@ -54,6 +62,14 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_saveIndex
  * Signature: (JLjava/lang/String;)V
  */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_loadIndex
+  (JNIEnv *, jclass, jlong, jstring);
+
+/*
+ * Class:     com_criteo_recommendation_knn_HnswLib
+ * Method:    loadBruteforce
+ * Signature: (JLjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_loadBruteforce
   (JNIEnv *, jclass, jlong, jstring);
 
 /*

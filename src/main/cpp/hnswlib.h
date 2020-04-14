@@ -28,7 +28,7 @@
 #endif
 
 #include <queue>
-
+#include <unordered_map>
 #include <string.h>
 
 namespace hnswlib {
@@ -70,6 +70,10 @@ namespace hnswlib {
         virtual void saveIndex(const std::string &location)=0;
         virtual ~AlgorithmInterface(){
         }
+        virtual inline char *getDataByInternalId(tableint internal_id) const = 0;
+        virtual inline labeltype getExternalLabel(tableint internal_id) const = 0;
+        virtual inline size_t getNbItems() const = 0;
+        virtual inline std::unordered_map<labeltype, tableint> * getLabelLookup()=0;
     };
 
 

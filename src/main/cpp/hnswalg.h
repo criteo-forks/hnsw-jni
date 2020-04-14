@@ -27,7 +27,7 @@ namespace hnswlib {
 
         }
 
-        HierarchicalNSW(SpaceInterface<dist_t> *s, const std::string &location, bool nmslib = false, size_t max_elements=0) {
+        HierarchicalNSW(SpaceInterface<dist_t> *s, const std::string &location, size_t max_elements=0) {
             loadIndex(location, s, max_elements);
         }
 
@@ -793,7 +793,13 @@ namespace hnswlib {
             return results;
         };
 
+        inline size_t getNbItems() const {
+            return cur_element_count;
+        }
 
+        inline std::unordered_map<labeltype, tableint> * getLabelLookup() {
+            return &label_lookup_;
+        }
     };
 
 }

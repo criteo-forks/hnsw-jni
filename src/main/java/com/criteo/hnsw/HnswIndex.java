@@ -6,26 +6,36 @@ public class HnswIndex {
     private long pointer;
     private int dimension;
     private String precision;
+    private Boolean isBruteforce;
 
     public static HnswIndex create(String metric, int dimension) {
         return create(metric, dimension, Precision.Float32);
     }
 
     public static HnswIndex create(String metric, int dimension, String precision) {
+        return create(metric, dimension, precision, false);
+    }
+
+    public static HnswIndex create(String metric, int dimension, String precision, Boolean isBruteforce) {
         int metricVal = Metrics.getVal(metric);
         int precisionVal = Precision.getVal(precision);
         long pointer = HnswLib.create(dimension, metricVal, precisionVal);
-        return new HnswIndex(pointer, dimension, precision);
+        return new HnswIndex(pointer, dimension, precision, isBruteforce);
     }
 
-    public HnswIndex(long pointer, int dimension, String precision) {
+    public HnswIndex(long pointer, int dimension, String precision, Boolean isBruteforce) {
         this.pointer = pointer;
         this.dimension = dimension;
         this.precision = precision;
+        this.isBruteforce = isBruteforce;
     }
 
     public long getPointer() {
         return pointer;
+    }
+
+    public Boolean isBruteforce() {
+        return isBruteforce;
     }
 
     public long getDimension() {
@@ -51,6 +61,10 @@ public class HnswIndex {
 
     public void initNewIndex(long maxElements, long M, long efConstruction, long randomSeed) {
         HnswLib.initNewIndex(pointer, maxElements, M, efConstruction, randomSeed);
+    }
+
+    public void initBruteforce(long maxElements) {
+        HnswLib.initBruteforce(pointer, maxElements);
     }
 
     public void setEf(long ef) {

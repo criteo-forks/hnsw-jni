@@ -37,11 +37,15 @@ public class HnswLib {
 
     public static native void initNewIndex(long pointer, long max_elements, long M, long ef_construction, long random_seed);
 
+    public static native void initBruteforce(long pointer, long max_elements);
+
     public static native void setEf(long pointer, long ef_search);
 
     public static native void saveIndex(long pointer, String path);
 
     public static native void loadIndex(long pointer, String path);
+
+    public static native void loadBruteforce(long pointer, String path);
 
     public static native void addItem(long pointer, float[] vector, long label);
 

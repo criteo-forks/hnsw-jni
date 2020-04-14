@@ -58,14 +58,26 @@ public:
             }
         }
         data_size = space->get_data_size();
+        fstdistfunc_ = space->get_dist_func();
+        dist_func_param_ = space->get_dist_func_param();
         appr_alg = NULL;
     }
 
     void initNewIndex(const size_t maxElements, const size_t M, const size_t efConstruction, const size_t random_seed) {
+        setAlgorithm(new hnswlib::HierarchicalNSW<dist_t>(space, maxElements, M, efConstruction, random_seed));
+    }
+
+    void initBruteforce(const size_t maxElements) {
+        setAlgorithm(new hnswlib::BruteforceSearch<dist_t>(space, maxElements));
+    }
+
+    void setAlgorithm(hnswlib::AlgorithmInterface<dist_t> * algo) {
         if (appr_alg) {
-            throw new std::runtime_error("The index is already initiated.");
+            std::cerr<<"Warning: Setting index for an already inited index. Old index is being deallocated.\n";
+            delete appr_alg;
         }
-        appr_alg = new hnswlib::HierarchicalNSW<dist_t>(space, maxElements, M, efConstruction, random_seed);
+        appr_alg = algo;
+        label_lookup_ = appr_alg->getLabelLookup();
     }
 
     void saveIndex(const std::string &path_to_index) {
@@ -73,20 +85,26 @@ public:
     }
 
     void loadIndex(const std::string &path_to_index) {
-        if (appr_alg) {
-            std::cerr<<"Warning: Calling load_index for an already inited index. Old index is being deallocated.\n";
-            delete appr_alg;
-        }
-        appr_alg = new hnswlib::HierarchicalNSW<dist_t>(space, path_to_index, false, 0);
+        setAlgorithm(new hnswlib::HierarchicalNSW<dist_t>(space, path_to_index));
+    }
+
+    void loadBruteforce(const std::string &path_to_index) {
+        setAlgorithm(new hnswlib::BruteforceSearch<dist_t>(space, path_to_index));
     }
 
     void normalizeVector(dist_t *data, dist_t *norm_array){
+        dist_t norm = 1.0f / (getL2Norm(data) + 1e-30f);
+        for(int i = 0; i < dim; i++) {
+            norm_array[i] = data[i]*norm;
+        }
+    }
+
+    inline float getL2Norm(dist_t *data) {
         dist_t norm=0.0f;
-        for(int i=0;i<dim;i++)
-            norm+=data[i]*data[i];
-        norm= 1.0f / (sqrtf(norm) + 1e-30f);
-        for(int i=0;i<dim;i++)
-            norm_array[i]=data[i]*norm;
+        for(int i=0; i < dim; i++) {
+            norm+= data[i]*data[i];
+        }
+        return sqrtf(norm);
     }
 
     void addItem(dist_t* vector, size_t id) {
@@ -107,13 +125,13 @@ public:
     }
 
     size_t getNbItems() {
-        return appr_alg->cur_element_count;
+        return appr_alg->getNbItems();
     }
 
     void* getItem(size_t label) {
         hnswlib::tableint label_c;
-        auto search = appr_alg->label_lookup_.find(label);
-        if (search == appr_alg->label_lookup_.end()) {
+        auto search = label_lookup_->find(label);
+        if (search == label_lookup_->end()) {
             return nullptr;
         }
         label_c = search->second;
@@ -121,17 +139,17 @@ public:
     }
 
     inline void decodeItem(const void* src, void* dst) {
-        decode_func_(src, dst, appr_alg->dist_func_param_);
+        decode_func_(src, dst, dist_func_param_);
     }
 
     inline void encodeItem(const void* src, void* dst) {
-        encode_func_(src, dst, appr_alg->dist_func_param_);
+        encode_func_(src, dst, dist_func_param_);
     }
 
     std::vector<size_t> getLabels() {
         std::vector<size_t> labels;
-        for(auto kv : appr_alg->label_lookup_) {
-            labels.push_back(kv.first);
+        for(auto iter = label_lookup_->begin(); iter != label_lookup_->end(); iter++) {
+            labels.push_back(iter->first);
         }
         return labels;
     }
@@ -182,7 +200,7 @@ public:
     }
 
     dist_t getDistanceBetweenVectors(void* vector1, void* vector2) {
-        return appr_alg->fstdistfunc_(vector1, vector2, appr_alg->dist_func_param_);
+        return fstdistfunc_(vector1, vector2, dist_func_param_);
     }
 
     hnswlib::SpaceInterface<float> *space;
@@ -192,7 +210,10 @@ public:
     hnswlib::ENCODEFUNC encode_func_;
     hnswlib::DECODEFUNC decode_func_;
     Precision precision = Float32;
-    hnswlib::HierarchicalNSW<dist_t> *appr_alg;
+    hnswlib::AlgorithmInterface<dist_t> * appr_alg;
+    hnswlib::DISTFUNC <dist_t> fstdistfunc_;
+    std::unordered_map<hnswlib::labeltype, hnswlib::tableint> * label_lookup_;
+    void *dist_func_param_;
 
     ~Index() {
         delete space;
