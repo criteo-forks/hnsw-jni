@@ -71,12 +71,16 @@ public class HnswIndex {
 
     public FloatByteBuf getItem(long label) {
         ByteBuffer buffer = HnswLib.getItem(this.pointer, label);
-
-        if (buffer != null) {
-            return FloatByteBuf.wrappedBuffer(buffer);
-        } else {
+        if(buffer == null) {
             return null;
         }
+        if (precision.equals(Precision.Float16)) {
+            FloatByteBuf decoded = new FloatByteBuf(dimension, false);
+            HnswLib.decodeItem(pointer, buffer, decoded.getNioBuffer());
+            decoded.writerIndex(dimension); // Since memory update happens in native, we need to tell JVM what is new position
+            return decoded;
+        }
+        return FloatByteBuf.wrappedBuffer(buffer);
     }
 
     public KnnResult search(FloatByteBuf query, int k) throws Exception {
