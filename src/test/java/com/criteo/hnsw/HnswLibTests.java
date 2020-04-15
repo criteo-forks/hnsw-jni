@@ -5,9 +5,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.nio.LongBuffer;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,65 +31,72 @@ public class HnswLibTests {
 
     @Test
     public void create_indices_save_and_load() throws IOException {
-        Map<Long, Function<Integer, Float>> indices = new HashMap<Long, Function<Integer, Float>>() {{
-            put(HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val), getValueById);
-            put(HnswLib.create(dimension, Metrics.DotProductVal, Precision.Float32Val), getValueById);
-            put(HnswLib.create(dimension, Metrics.AngularVal, Precision.Float32Val), getNormalizedValueById);
+        Map<HnswIndex, Function<Integer, Float>> indices = new HashMap<HnswIndex, Function<Integer, Float>>() {{
+            // Hnsw
+            put(HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, false), getValueById);
+            put(HnswIndex.create(Metrics.DotProduct, dimension, Precision.Float32, false), getValueById);
+            put(HnswIndex.create(Metrics.Angular, dimension, Precision.Float32, false), getNormalizedValueById);
+            // Bruteforce
+            put(HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, true), getValueById);
+            put(HnswIndex.create(Metrics.DotProduct, dimension, Precision.Float32, true), getValueById);
+            put(HnswIndex.create(Metrics.Angular, dimension, Precision.Float32, true), getNormalizedValueById);
         }};
         File dir = Files.createTempDirectory("HnswLib").toFile();
         String indexPathStr = new File(dir, "index.hnsw").toString();
 
         long nbItems = 123;
 
-        for (Map.Entry<Long, Function<Integer, Float>> entry : indices.entrySet()) {
-            long index = entry.getKey();
+        for (Map.Entry<HnswIndex, Function<Integer, Float>> entry : indices.entrySet()) {
+            HnswIndex index = entry.getKey();
             Function<Integer, Float> getValueById = entry.getValue();
-
-            HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
-            assertEquals(0, HnswLib.getNbItems(index));
+            if(index.isBruteforce()) {
+                index.initBruteforce(nbItems);
+            } else {
+                index.initNewIndex(nbItems, M, efConstruction, randomSeed);
+            }
+            assertEquals(0, index.getNbItems());
             populateIndex(index, getValueById, nbItems, dimension);
 
-            assertEquals(nbItems, HnswLib.getNbItems(index));
+            assertEquals(nbItems, index.getNbItems());
 
-            assertAllVectorsMatchExpected(index, dimension, getValueById);
-            HnswLib.saveIndex(index, indexPathStr);
+            assertAllVectorsMatchExpected(index, dimension, getValueById, delta);
+            index.save(indexPathStr);
 
-            HnswLib.loadIndex(index, indexPathStr);
-            assertAllVectorsMatchExpected(index, dimension, getValueById);
+            index.load(indexPathStr);
+            assertAllVectorsMatchExpected(index, dimension, getValueById, delta);
 
-            HnswLib.destroy(index);
+            index.unload();
         }
     }
 
+
     @Test
-    public void create_bruteforce_indices_save_and_load() throws IOException {
-        Map<Long, Function<Integer, Float>> indices = new HashMap<Long, Function<Integer, Float>>() {{
-            put(HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val), getValueById);
-            put(HnswLib.create(dimension, Metrics.DotProductVal, Precision.Float32Val), getValueById);
-            put(HnswLib.create(dimension, Metrics.AngularVal, Precision.Float32Val), getNormalizedValueById);
+    public void create_indices_save_and_load_float16() throws IOException {
+        Map<HnswIndex, Function<Integer, Float>> indices = new HashMap<HnswIndex, Function<Integer, Float>>() {{
+            put(HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float16), getValueById);
         }};
         File dir = Files.createTempDirectory("HnswLib").toFile();
         String indexPathStr = new File(dir, "index.hnsw").toString();
 
         long nbItems = 123;
-
-        for (Map.Entry<Long, Function<Integer, Float>> entry : indices.entrySet()) {
-            long index = entry.getKey();
+        double epsilon = 1E-3;
+        for (Map.Entry<HnswIndex, Function<Integer, Float>> entry : indices.entrySet()) {
+            HnswIndex index = entry.getKey();
             Function<Integer, Float> getValueById = entry.getValue();
 
-            HnswLib.initBruteforce(index, nbItems);
-            assertEquals(0, HnswLib.getNbItems(index));
+            index.initNewIndex(nbItems, M, efConstruction, randomSeed);
+            assertEquals(0, index.getNbItems());
             populateIndex(index, getValueById, nbItems, dimension);
 
-            assertEquals(nbItems, HnswLib.getNbItems(index));
+            assertEquals(nbItems, index.getNbItems());
 
-            assertAllVectorsMatchExpected(index, dimension, getValueById);
-            HnswLib.saveIndex(index, indexPathStr);
+            assertAllVectorsMatchExpected(index, dimension, getValueById, epsilon);
+            index.save(indexPathStr);
 
-            HnswLib.loadBruteforce(index, indexPathStr);
-            assertAllVectorsMatchExpected(index, dimension, getValueById);
+            index.load(indexPathStr);
+            assertAllVectorsMatchExpected(index, dimension, getValueById, epsilon);
 
-            HnswLib.destroy(index);
+            index.unload();
         }
     }
 
@@ -100,19 +105,19 @@ public class HnswLibTests {
     public void check_Euclidean_index_computes_distance_correctly_simple_embeddings() {
         int[] dimensionsToTest = new int[] {3, 6, 16, 101, 200};
         for (int dimension : dimensionsToTest) {
-            long index = HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val);
+            HnswIndex index = HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32);
 
-            HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
+            index.initNewIndex(nbItems, M, efConstruction, randomSeed);
             populateIndex(index, getValueById, nbItems, dimension);
 
             for (int i = 0; i < nbItems; i++) {
                 for (int j = i; j < nbItems; j++) {
-                    float distance = HnswLib.getDistanceBetweenLabels(index, i, j);
+                    float distance = index.getDistanceBetweenLabels(i, j);
                     float expectedDistance = dimension * (float) Math.pow((getValueById.apply(i) - getValueById.apply(j)), 2);
                     assertRelativeError(distance, expectedDistance);
                 }
             }
-            HnswLib.destroy(index);
+            index.unload();
         }
     }
 
@@ -120,21 +125,21 @@ public class HnswLibTests {
     public void check_Euclidean_index_computes_distance_correctly_random_seeded_embeddings() {
         int[] dimensionsToTest = new int[] {3, 6, 16, 101, 200};
         for (int dimension : dimensionsToTest) {
-            long index = HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val);
+            HnswIndex index = HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32);
 
-            HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
+            index.initNewIndex(nbItems, M, efConstruction, randomSeed);
             populateIndex(index, getRandomValueById, nbItems, dimension);
 
             for (int i = 0; i < nbItems; i++) {
                 for (int j = i; j < nbItems; j++) {
-                    float distance = HnswLib.getDistanceBetweenLabels(index, i, j);
-                    FloatByteBuf vector1 = FloatByteBuf.wrappedBuffer(HnswLib.getItem(index, i));
-                    FloatByteBuf vector2 = FloatByteBuf.wrappedBuffer(HnswLib.getItem(index, j));
+                    float distance = index.getDistanceBetweenLabels(i, j);
+                    FloatByteBuf vector1 = index.getItem(i);
+                    FloatByteBuf vector2 = index.getItem(j);
                     float expectedDistance = getL2Distance(vector1, vector2, dimension);
                     assertRelativeError(distance, expectedDistance);
                 }
             }
-            HnswLib.destroy(index);
+            index.unload();
         }
     }
 
@@ -147,164 +152,159 @@ public class HnswLibTests {
     }
 
     @Test
-    public void check_Euclidean_index_returns_correct_neighbours() {
+    public void check_Euclidean_index_returns_correct_neighbours() throws Exception {
         int k = (int)nbItems;
-        long index = HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val);
+        HnswIndex[] indices = new HnswIndex[]{
+                HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, false),
+                HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, true),
+        };
 
-        HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
-        populateIndex(index, getValueById, nbItems, dimension);
+        for (HnswIndex index : indices) {
 
-        FloatByteBuf distances = new FloatByteBuf(k);
-        LongByteBuf items = new LongByteBuf(k);
-        FloatBuffer query = HnswLib.getItem(index, 0).asFloatBuffer();
-        ByteBuffer[] vectors = new ByteBuffer[k];
-        long nbResults = HnswLib.search(index, query, k, items.asLongBuffer(), distances.asFloatBuffer(), vectors);
-        assertEquals(k, nbResults);
+            if(index.isBruteforce()) {
+                index.initBruteforce(nbItems);
+            } else {
+                index.initNewIndex(nbItems, M, efConstruction, randomSeed);
+            }
+            populateIndex(index, getValueById, nbItems, dimension);
 
-        // 1st result should be self
-        assertEquals(0, items.get(0));
-        assertEquals(0, distances.get(0), delta);
-        assertAllEqual(query, vectors[0].asFloatBuffer(), dimension);
-        for(int i = 1; i < k; i++) {
-            long found = items.get(i);
-            float distance = distances.get(i);
-            assertEquals(k - i, found);
-            assertEquals(dimension * (float)Math.pow(getValueById.apply(k - i), 2), distance, delta);
-            assertAllEqual(HnswLib.getItem(index, found).asFloatBuffer(), vectors[i].asFloatBuffer(), dimension);
+            FloatByteBuf query = index.getItem(0);
+            KnnResult results = index.search(query, k);
+            assertEquals(k, results.resultCount);
+
+            // 1st result should be self
+            assertEquals(0, results.resultItems[0]);
+
+            assertEquals(0, results.resultDistances[0], delta);
+            assertAllEqual(query, results.resultVectors[0], dimension);
+            for (int i = 1; i < k; i++) {
+                long found = results.resultItems[i];
+                float distance = results.resultDistances[i];
+                assertEquals(k - i, found);
+                assertEquals(dimension * (float) Math.pow(getValueById.apply(k - i), 2), distance, delta);
+                assertAllEqual(index.getItem(found), results.resultVectors[i], dimension);
+            }
+
+            index.unload();
         }
-
-        HnswLib.destroy(index);
-    }
-
-
-    @Test
-    public void check_Bruteforce_index_returns_correct_neighbours() {
-        int k = (int)nbItems;
-        long index = HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val);
-
-        HnswLib.initBruteforce(index, nbItems);
-        populateIndex(index, getValueById, nbItems, dimension);
-
-        FloatByteBuf distances = new FloatByteBuf(k);
-        LongByteBuf items = new LongByteBuf(k);
-        FloatBuffer query = HnswLib.getItem(index, 0).asFloatBuffer();
-        ByteBuffer[] vectors = new ByteBuffer[k];
-        long nbResults = HnswLib.search(index, query, k, items.asLongBuffer(), distances.asFloatBuffer(), vectors);
-        assertEquals(k, nbResults);
-
-        // 1st result should be self
-        assertEquals(0, items.get(0));
-        assertEquals(0, distances.get(0), delta);
-        assertAllEqual(query, vectors[0].asFloatBuffer(), dimension);
-        for(int i = 1; i < k; i++) {
-            long found = items.get(i);
-            float distance = distances.get(i);
-            assertEquals(k - i, found);
-            assertEquals(dimension * (float)Math.pow(getValueById.apply(k - i), 2), distance, delta);
-            assertAllEqual(HnswLib.getItem(index, found).asFloatBuffer(), vectors[i].asFloatBuffer(), dimension);
-        }
-
-        HnswLib.destroy(index);
     }
 
     @Test
-    public void check_no_error_happens_if_less_items_is_returned_than_k() {
+    public void check_Euclidean_float16_index_returns_correct_neighbours() throws Exception {
+        int k = (int)nbItems;
+        HnswIndex index = HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float16);
+
+        index.initNewIndex(nbItems, M, efConstruction, randomSeed);
+        populateIndex(index, getValueById, nbItems, dimension);
+
+        FloatByteBuf query = index.getItem(0);
+        KnnResult results = index.search(query, k);
+        assertEquals(k, results.resultCount);
+
+        // 1st result should be self
+        assertEquals(0, results.resultItems[0]);
+
+        assertEquals(0, results.resultDistances[0], 1E-3);
+        assertAllEqual(query, decode(results.resultVectors[0], index), dimension);
+        for(int i = 1; i < k; i++) {
+            long found = results.resultItems[i];
+            float distance = results.resultDistances[i];
+            assertEquals(k - i, found);
+            assertEquals(dimension * (float)Math.pow(getValueById.apply(k - i), 2), distance, 6E-3);
+            assertAllEqual(index.getItem(found), decode(results.resultVectors[i], index), dimension);
+        }
+
+        index.unload();
+    }
+
+    @Test
+    public void check_no_error_happens_if_less_items_is_returned_than_k() throws Exception {
         int biggerK = (int)nbItems * 2;
 
-        long index = HnswLib.create(dimension, Metrics.EuclideanVal, Precision.Float32Val);
+        HnswIndex index = HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32);
 
-        HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
+        index.initNewIndex(nbItems, M, efConstruction, randomSeed);
         populateIndex(index, getValueById, nbItems, dimension);
 
-        FloatByteBuf distances = new FloatByteBuf(biggerK);
-        LongByteBuf items = new LongByteBuf(biggerK);
-        FloatBuffer query = HnswLib.getItem(index, 0).asFloatBuffer();
-        ByteBuffer[] vectors = new ByteBuffer[biggerK];
-        long nbResults = HnswLib.search(index, query, biggerK, items.asLongBuffer(), distances.asFloatBuffer(), vectors);
-
-        assertEquals(nbItems, nbResults);
+        FloatByteBuf query = index.getItem(0);
+        KnnResult results = index.search(query, biggerK);
+        assertEquals(nbItems, results.resultCount);
 
         for(int i = 1; i < nbItems; i++) {
-            long found = items.get(i);
-            float distance = distances.get(i);
+            long found = results.resultItems[i];
+            float distance = results.resultDistances[i];
             assertEquals(nbItems - i, found);
             assertEquals(dimension * (float)Math.pow(getValueById.apply((int)nbItems - i), 2), distance, delta);
-            assertAllEqual(HnswLib.getItem(index, found).asFloatBuffer(), vectors[i].asFloatBuffer(), dimension);
+            assertAllEqual(index.getItem(found), results.resultVectors[i], dimension);
         }
 
-        HnswLib.destroy(index);
+        index.unload();
     }
 
 
     @Test @Ignore("Inner product of A and B is implemented in hnswlib (space_ip.h) as A*B = 1 - (A1*B1 + A2*B2 + â€¦)")
-    public void check_DotProduct_index_returns_correct_neighbours() {
+    public void check_DotProduct_index_returns_correct_neighbours() throws Exception {
         int k = (int)nbItems;
-        long index = HnswLib.create(dimension, Metrics.DotProductVal, Precision.Float32Val);
+        HnswIndex index = HnswIndex.create(Metrics.DotProduct, dimension, Precision.Float32);
 
-        HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
+        index.initNewIndex(nbItems, M, efConstruction, randomSeed);
         populateIndex(index, getValueById, nbItems, dimension);
 
-        FloatByteBuf distances = new FloatByteBuf(k);
-        FloatBuffer distancesNio = distances.asFloatBuffer();
-        LongByteBuf items = new LongByteBuf(k);
-        LongBuffer itemsNio = items.asLongBuffer();
-        ByteBuffer[] vectors = new ByteBuffer[k];
         for(int j = 0; j < nbItems; j++) {
-            FloatBuffer query = HnswLib.getItem(index, j).asFloatBuffer();
-            HnswLib.search(index, query, k, itemsNio, distancesNio, vectors);
+            FloatByteBuf query = index.getItem(j);
+            KnnResult results = index.search(query, k);
 
-            assertEquals(k, distancesNio.limit());
-            assertEquals(k, itemsNio.limit());
+            assertEquals(k, results.resultCount);
 
             for (int i = 0; i < k; i++) {
-                long found = items.get(i);
-                float distance = distances.get(i);
+                long found = results.resultItems[i];
+                float distance = results.resultDistances[i];
                 assertEquals(k - i, found);
                 assertEquals(1 - dimension * getValueById.apply(k - i) * getValueById.apply(j), distance, delta);
-                assertAllEqual(HnswLib.getItem(index, found).asFloatBuffer(), vectors[i].asFloatBuffer(), dimension);
+                assertAllEqual(index.getItem(found), results.resultVectors[i], dimension);
             }
         }
-        HnswLib.destroy(index);
+        index.unload();
     }
 
     @Test
     public void check_Kendall_index_computes_distance_correctly() {
-        long index = HnswLib.create(4, Metrics.KendallVal, Precision.Float32Val);
-        HnswLib.initNewIndex(index, nbItems, M, efConstruction, randomSeed);
+        HnswIndex index = HnswIndex.create(Metrics.Kendall, 4, Precision.Float32);
+        index.initNewIndex(nbItems, M, efConstruction, randomSeed);
         float[] vector1 = new float[] {1, 2, 3, 4};
         float[] vector2 = new float[] {1, 3, 2, 4};
 
-        HnswLib.addItem(index, vector1, 1);
-        HnswLib.addItem(index, vector2, 2);
+        index.addItem(vector1, 1);
+        index.addItem(vector2, 2);
 
-        float distance = HnswLib.getDistanceBetweenLabels(index, 1, 2);
+        float distance = index.getDistanceBetweenLabels(1L, 2L);
         float expectedDistance = (1.0f - 0.66666666f);
         assertRelativeError(distance, expectedDistance);
-        HnswLib.destroy(index);
+        index.unload();
     }
 
-    private void populateIndex(long index, Function<Integer, Float> getValueById, long nbItems, int dimension) {
+    private void populateIndex(HnswIndex index, Function<Integer, Float> getValueById, long nbItems, int dimension) {
         for (int i = 0; i < nbItems; i++) {
             float value = getValueById.apply(i);
-            HnswLib.addItem(index, HnswNativeLoadTest.getVector(value, dimension), i);
-            FloatByteBuf.wrappedBuffer(HnswLib.getItem(index, i));
+            index.addItem(HnswNativeLoadTest.getVector(value, dimension), i);
+            index.getItem(i);
         }
     }
 
-    private void assertAllVectorsMatchExpected(long index, int size, Function<Integer, Float> getExpectedValue) {
-        long[] ids = HnswLib.getLabels(index);
+    private void assertAllVectorsMatchExpected(HnswIndex index, int size, Function<Integer, Float> getExpectedValue, double epsilon) {
+        long[] ids = index.getIds();
         for (long l : ids) {
             int id = (int) l;
             float expectedValue = getExpectedValue.apply(id);
-            FloatByteBuf item = FloatByteBuf.wrappedBuffer(HnswLib.getItem(index, id));
-            assertAllValuesEqual(item, size, expectedValue);
+            FloatByteBuf item = index.getItem(id);
+            assertAllValuesEqual(item, size, expectedValue, epsilon);
         }
     }
 
-    private void assertAllValuesEqual(FloatByteBuf vector, int size, float expectedValue) {
+    private void assertAllValuesEqual(FloatByteBuf vector, int size, float expectedValue, double epsilon) {
         assertEquals(size, vector.asFloatBuffer().limit());
         for (int j = 0; j < size; j++) {
-            assertEquals(expectedValue, vector.get(j), delta);
+            assertEquals(expectedValue, vector.get(j), epsilon);
         }
     }
 
@@ -316,6 +316,10 @@ public class HnswLibTests {
         }
     }
 
+    private void assertAllEqual(FloatByteBuf vector1, FloatByteBuf vector2, int size) {
+        assertAllEqual(vector1.asFloatBuffer(), vector2.asFloatBuffer(), size);
+    }
+
     private float getL2Distance(FloatByteBuf vector1, FloatByteBuf vector2, int dimension) {
         float res = 0.0f;
         for(int i = 0; i < dimension; i++) {
@@ -323,5 +327,12 @@ public class HnswLibTests {
             res += t * t;
         }
         return res;
+    }
+
+    private FloatByteBuf decode(FloatByteBuf src, HnswIndex index) {
+        FloatByteBuf decoded = new FloatByteBuf((int)index.getDimension(), false);
+        HnswLib.decodeItem(index.getPointer(), src.getNioBuffer(), decoded.getNioBuffer());
+        decoded.writerIndex(dimension); // Since memory update happens in native, we need to tell JVM what is new position
+        return decoded;
     }
 }

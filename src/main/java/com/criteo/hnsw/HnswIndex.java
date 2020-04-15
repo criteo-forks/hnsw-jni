@@ -47,7 +47,11 @@ public class HnswIndex {
     }
 
     public long load(String path) {
-        HnswLib.loadIndex(pointer, path);
+        if (isBruteforce) {
+            HnswLib.loadBruteforce(pointer, path);
+        } else {
+            HnswLib.loadIndex(pointer, path);
+        }
         return getNbItems();
     }
 
@@ -128,6 +132,10 @@ public class HnswIndex {
 
     public float getDistance(FloatByteBuf vector1, FloatByteBuf vector2) {
         return HnswLib.getDistanceBetweenVectors(pointer, vector1.asFloatBuffer(), vector2.asFloatBuffer());
+    }
+
+    public float getDistanceBetweenLabels(long label1, long label2) {
+        return HnswLib.getDistanceBetweenLabels(pointer, label1, label2);
     }
 
 }
