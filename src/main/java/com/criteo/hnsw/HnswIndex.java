@@ -38,7 +38,7 @@ public class HnswIndex {
         return isBruteforce;
     }
 
-    public long getDimension() {
+    public int getDimension() {
         return dimension;
     }
 
@@ -91,12 +91,6 @@ public class HnswIndex {
         ByteBuffer buffer = HnswLib.getItem(this.pointer, label);
         if(buffer == null) {
             return null;
-        }
-        if (precision.equals(Precision.Float16)) {
-            FloatByteBuf decoded = new FloatByteBuf(dimension, true);
-            HnswLib.decodeItem(pointer, buffer, decoded.getNioBuffer());
-            decoded.writerIndex(dimension); // Since memory update happens in native, we need to tell JVM what is new position
-            return decoded;
         }
         return FloatByteBuf.wrappedBuffer(buffer);
     }

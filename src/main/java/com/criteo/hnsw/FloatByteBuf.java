@@ -73,6 +73,11 @@ public class FloatByteBuf implements ByteBufWrapper {
         this.inner.writerIndex(index * FLOAT_SIZE);
     }
 
+    public FloatByteBuf writerBytes(ByteBuffer src) {
+        this.inner.writeBytes(src);
+        return this;
+    }
+
     public FloatByteBuf writeZero(int length) {
         this.inner.writeZero(length * FLOAT_SIZE);
         return this;
