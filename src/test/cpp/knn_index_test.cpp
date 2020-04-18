@@ -1,19 +1,29 @@
 #include "doctest.h"
 #include "hnswindex.h"
 
-TEST_CASE("Serialize and deserialize L2 indices") {
+TEST_CASE("Serialize and deserialize indices") {
     const int seed = 42;
     const int M = 15;
     const int efConstruction = 1000;
 
     int32_t nbItems = 1000;
     int32_t dim = 100;
-    std::vector<Precision> p {Float16, Float32};
-    std::vector<float>     e {5E-4,    1E-30   };
+    std::vector<std::pair<Precision, Distance>> p {
+        std::make_pair(Float16, Euclidean),
+        std::make_pair(Float32, Euclidean),
+        std::make_pair(Float32, InnerProduct),
+    };
+    std::vector<float> e {
+        5E-4,
+        1E-30,
+        1E-30,
+    };
     for(size_t j = 0; j < p.size(); j++) {
-        auto precision = p[j];
-        auto hnsw = new Index<float>(Euclidean, dim, precision);
+        auto precision = p[j].first;
+        auto distance = p[j].second;
+        auto hnsw = new Index<float>(distance, dim, precision);
         auto epsilon = e[j];
+        CAPTURE(distance);
         CAPTURE(precision);
         CAPTURE(epsilon);
         hnsw->initNewIndex(nbItems, M, efConstruction, seed);
@@ -27,7 +37,7 @@ TEST_CASE("Serialize and deserialize L2 indices") {
             hnsw->addItem(item.data(), id);
         }
         REQUIRE_EQ(nbItems, hnsw->getNbItems());
-        std::string indexPath = "./l2-hnsw-" + std::to_string(precision) + ".bin";
+        std::string indexPath = "./hnsw-" + std::to_string(precision) + "-" + std::to_string(distance) + ".bin";
         hnsw->saveIndex(indexPath);
 
         hnsw->loadIndex(indexPath);

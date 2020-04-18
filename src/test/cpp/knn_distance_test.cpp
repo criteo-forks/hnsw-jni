@@ -169,3 +169,68 @@ TEST_CASE ("Check L2 distance computation on large vectors") {
         delete decoder;
     }
 }
+
+TEST_CASE("Check Inner Product distance computation on small vectors") {
+    std::vector<float> a {1.0, 2.0, 3.0, 0.5, 0.1,  0.2, -0.2,  0.005, 1.001};
+    std::vector<float> b {2.0, 4.0, 6.0, 0.0, 0.3, -0.2, -0.45, 0.006, 2.009};
+    std::unordered_map<int32_t, std::pair<float, float>> expected_distances = {
+    /* dim | epsilon | expected_distance */
+        {1,  {1E-30,   1 - (2)}},
+        {2,  {1E-30,   1 - (2 + 8)}},
+        {3,  {1E-30,   1 - (2 + 8 + 18)}},
+        {4,  {1E-30,   1 - (2 + 8 + 18 + 0)}},
+        {5,  {1E-5 ,   1 - (2 + 8 + 18 + 0 + 0.03)}},
+        {6,  {1E-5 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04)}},
+        {7,  {1E-5 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04 + 0.09)}},
+        {8,  {1E-5 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04 + 0.09 + 3E-5)}},
+        {9,  {1E-4 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04 + 0.09 + 3E-5 + 2.011009)}},
+    };
+    for (std::pair<int32_t, std::pair<float, float>> element : expected_distances) {
+        auto dim = element.first;
+        CAPTURE(dim);
+        float epsilon = element.second.first;
+        float expected_distance = element.second.second;
+        INFO("float32 (no error)");
+        hnswlib::SpaceInterface<float>* space = new hnswlib::InnerProductSpace(dim);
+        auto result = get_distance(a.data(), b.data(), dim, space);
+        REQUIRE_EQ(result, expected_distance);
+        CAPTURE("float16. Allowed Error: " << epsilon);
+        delete space;
+    }
+}
+
+TEST_CASE ("Check Inner Product distance computation on large vectors") {
+    std::unordered_map<int32_t, std::pair<float, float>> expected_distances = {
+    /* dim    | epsilon_f32 | epsilon_f16 */
+        {16,       {1E-6,      1E-4}},
+        {17,       {1E-6,      2E-3}},
+        {32,       {1E-6,      1E-3}},
+        {34,       {1E-6,      1E-3}},
+        {54,       {1E-6,      1E-3}},
+        {100,      {1E-6,      1E-3}},
+        {256,      {1E-5,      1E-3}},
+        {300,      {1E-4,      1E-3}},
+        {1000,     {1E-4,      1E-3}},
+        {1024,     {1E-4,      1E-3}},
+    };
+    srand(seed);
+    const float component_ratio = 2.05f;
+    for (std::pair<int32_t, std::pair<float, float>> element : expected_distances) {
+        auto dim = element.first;
+        CAPTURE(dim);
+        std::vector<float> a(dim), b(dim);
+        for(int j = 0; j < dim; j++) {
+            a[j] = (float) rand() / RAND_MAX;
+            b[j] = component_ratio / a[j];
+        }
+        float expected_distance = 1 - dim * component_ratio;
+
+        float epsilon32 = element.second.first;
+        CAPTURE("float32 Allowed Error: " << epsilon32);
+
+        hnswlib::SpaceInterface<float>* space = new hnswlib::InnerProductSpace(dim);
+        auto result = get_distance(a.data(), b.data(), dim, space);
+        REQUIRE(is_approx_euqal(result, expected_distance, epsilon32));
+        delete space;
+    }
+}

@@ -1,6 +1,5 @@
 package com.criteo.hnsw;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -15,13 +14,14 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 
 public class HnswLibTests {
-    private static float delta = 5.0E-6f;
+    private static float delta = 8E-6f;
     private int randomSeed = 42;
     private Random rand = new Random(randomSeed);
 
     private float seedValue = 1;
     private int dimension = 100;
-    private Function<Integer, Float> getValueById = (id) -> id == 0 ? 0 : seedValue / id;
+    private Function<Integer, Float> getValueById = (id) -> id == 0? 0 : seedValue / id;
+    private Function<Integer, Float> getValueByIdFromOne = (id) ->  seedValue / (id + seedValue);
     private Function<Integer, Float> getRandomValueById = (id) -> rand.nextFloat();
     private Function<Integer, Float> getNormalizedValueById = i -> i == 0 ? 0.0f : 1 / (float) Math.sqrt(dimension);
     private long nbItems = 12;
@@ -175,8 +175,8 @@ public class HnswLibTests {
 
             // 1st result should be self
             assertEquals(0, results.resultItems[0]);
-
             assertEquals(0, results.resultDistances[0], delta);
+
             assertAllEqual(query, results.resultVectors[0], dimension);
             for (int i = 1; i < k; i++) {
                 long found = results.resultItems[i];
@@ -204,8 +204,8 @@ public class HnswLibTests {
 
         // 1st result should be self
         assertEquals(0, results.resultItems[0]);
-
         assertEquals(0, results.resultDistances[0], 1E-3);
+
         assertAllEqual(query, decoderFloat16.decode(results.resultVectors[0]), dimension);
         for (int i = 1; i < k; i++) {
             long found = results.resultItems[i];
@@ -244,27 +244,28 @@ public class HnswLibTests {
 
 
     @Test
-    @Ignore("Inner product of A and B is implemented in hnswlib (space_ip.h) as A*B = 1 - (A1*B1 + A2*B2 + â€¦)")
     public void check_DotProduct_index_returns_correct_neighbours() throws Exception {
         int k = (int) nbItems;
         HnswIndex index = HnswIndex.create(Metrics.DotProduct, dimension, Precision.Float32);
 
         index.initNewIndex(nbItems, M, efConstruction, randomSeed);
-        populateIndex(index, getValueById, nbItems, dimension);
+        populateIndex(index, getValueByIdFromOne, nbItems, dimension);
 
-        for (int j = 0; j < nbItems; j++) {
-            FloatByteBuf query = index.getItem(j);
-            KnnResult results = index.search(query, k);
+        FloatByteBuf query = index.getItem(0);
+        KnnResult results = index.search(query, k);
 
-            assertEquals(k, results.resultCount);
+        assertEquals(k, results.resultCount);
 
-            for (int i = 0; i < k; i++) {
-                long found = results.resultItems[i];
-                float distance = results.resultDistances[i];
-                assertEquals(k - i, found);
-                assertEquals(1 - dimension * getValueById.apply(k - i) * getValueById.apply(j), distance, delta);
-                assertAllEqual(index.getItem(found), results.resultVectors[i], dimension);
-            }
+        // 1st result should be self
+        assertEquals(0, results.resultItems[0]);
+        assertEquals(1 - dimension, results.resultDistances[0], delta);
+
+        for (int i = 1; i < k; i++) {
+            long found = results.resultItems[i];
+            float distance = results.resultDistances[i];
+            assertEquals(i, found);
+            assertEquals(1 - dimension * getValueByIdFromOne.apply(i), distance, delta);
+            assertAllEqual(index.getItem(found), results.resultVectors[i], dimension);
         }
         index.unload();
     }
