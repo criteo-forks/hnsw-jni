@@ -118,11 +118,15 @@ JNIEXPORT jobject JNICALL Java_com_criteo_hnsw_HnswLib_getItem(JNIEnv *env, jcla
     }
 }
 
-JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_decodeItem(JNIEnv *env, jclass jobj, jlong pointer, jobject src_buffer, jobject dst_buffer) {
+JNIEXPORT jboolean JNICALL Java_com_criteo_hnsw_HnswLib_decodeItem(JNIEnv *env, jclass jobj, jlong pointer, jobject src_buffer, jobject dst_buffer) {
     auto hnsw = (Index<float> *)pointer;
     auto src = static_cast<uint16_t*>(env->GetDirectBufferAddress(src_buffer));
     auto dst = static_cast<float*>(env->GetDirectBufferAddress(dst_buffer));
-    hnsw->decodeItem(src, dst);
+    if (hnsw->precision == Float16) {
+        hnsw->decodeFloat16(src, dst);
+        return (jboolean)true;
+    }
+    return (jboolean)false;
 }
 
 JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer, jobject distance_result_buffer, jobjectArray result_vectors) {

@@ -37,14 +37,15 @@ TEST_CASE("Serialize and deserialize L2 indices") {
             if(id > 0) {
                 expected = 1/(float)id;
             }
-            auto item_ptr = (float*)hnsw->getItem(id);
+            auto item_ptr = hnsw->getItem(id);
             std::vector<float> item(dim);
             if(precision == Float16) {
-                hnsw->decodeItem(item_ptr, item.data());
+                hnsw->decodeFloat16((uint16_t*)item_ptr, item.data());
                 item_ptr = item.data();
             }
+            float* item_ptr_float32 = (float*)item_ptr;
             for(size_t i = 0; i < dim; i++) {
-                auto actual = item_ptr[i];
+                auto actual = item_ptr_float32[i];
                 REQUIRE(expected == doctest::Approx(actual).epsilon(epsilon));
             }
         }

@@ -22,19 +22,11 @@ enum Precision {
 template<typename dist_t, typename data_t=float>
 class Index {
 public:
-    Index(hnswlib::SpaceInterface<float> *space, const int dim, bool normalize = false, const Precision precision = Float32) :
-        space(space), dim(dim), normalize(normalize), data_size(space->get_data_size()), precision(precision) {
-        appr_alg = NULL;
-    }
-
     Index(Distance distance, const int dim, const Precision precision = Float32) :
         dim(dim), precision(precision) {
         if (precision == Float16) {
             if(distance == Euclidean) {
-                auto spaceF16 = new hnswlib::L2SpaceF16(dim);
-                encode_func_ = spaceF16->get_encode_func();
-                decode_func_ = spaceF16->get_decode_func();
-                space = spaceF16;
+                space = new hnswlib::L2SpaceF16(dim);
             }
             else {
                 throw std::runtime_error(std::to_string(precision) + " precision does not support distance " + std::to_string(distance));
@@ -60,6 +52,9 @@ public:
         data_size = space->get_data_size();
         fstdistfunc_ = space->get_dist_func();
         dist_func_param_ = space->get_dist_func_param();
+        decoder_float16 = new hnswlib::DecoderFloat16(dim);
+        decode_func_float16 = decoder_float16->get_decode_func();
+        encode_func_float16 = decoder_float16->get_encode_func();
         appr_alg = NULL;
     }
 
@@ -108,18 +103,18 @@ public:
     }
 
     void addItem(dist_t* vector, size_t id) {
-        dist_t* vector_data = vector;
+        void* vector_data = vector;
         std::vector<dist_t> norm_array;
         if(normalize) {
             norm_array.reserve(dim);
-            normalizeVector(vector_data, norm_array.data());
+            normalizeVector((dist_t*)vector_data, norm_array.data());
             vector_data = norm_array.data();
         }
-        std::vector<dist_t> encoded_vector;
+        std::vector<uint16_t> encoded_float16_vector;
         if (precision == Float16) {
-            encoded_vector.reserve(dim);
-            encodeItem(vector_data, encoded_vector.data());
-            vector_data = encoded_vector.data();
+            encoded_float16_vector.reserve(dim);
+            encodeFloat16((dist_t*)vector_data, encoded_float16_vector.data());
+            vector_data = encoded_float16_vector.data();
         }
         appr_alg->addPoint(vector_data, (size_t) id);
     }
@@ -138,12 +133,12 @@ public:
         return appr_alg->getDataByInternalId(label_c);
     }
 
-    inline void decodeItem(const void* src, void* dst) {
-        decode_func_(src, dst, dist_func_param_);
+    inline void decodeFloat16(const uint16_t* src, float* dst) {
+        decode_func_float16(src, dst, dist_func_param_);
     }
 
-    inline void encodeItem(const void* src, void* dst) {
-        encode_func_(src, dst, dist_func_param_);
+    inline void encodeFloat16(const float* src, uint16_t* dst) {
+        encode_func_float16(src, dst, dist_func_param_);
     }
 
     std::vector<size_t> getLabels() {
@@ -167,22 +162,22 @@ public:
      * Returns: number of neighbours returned (<= k)
      **/
     size_t knnQuery(dist_t * query, size_t * result_labels, dist_t * result_distances, data_t** results_pointers, size_t k) {
-        dist_t* query_data = query;
+        void* query_data = query;
         std::vector<dist_t> norm_array;
         if(normalize) {
             norm_array.reserve(dim);
-            normalizeVector(query_data, norm_array.data());
+            normalizeVector((dist_t*)query_data, norm_array.data());
             query_data = norm_array.data();
         }
-        std::vector<dist_t> encoded_vector;
+        std::vector<uint16_t> encoded_float16_vector;
         if (precision == Float16) {
-            encoded_vector.reserve(dim);
+            encoded_float16_vector.reserve(dim);
             // TODO: Add asymmetric distance computation to avoid f32->f16->f32*n conversions for query vector
-            encodeItem(query_data, encoded_vector.data());
-            query_data = encoded_vector.data();
+            encodeFloat16((dist_t*)query_data, encoded_float16_vector.data());
+            query_data = encoded_float16_vector.data();
         }
         std::priority_queue<std::pair<dist_t, hnswlib::tableint >> result = appr_alg->searchKnn(
-                (void *) query_data, k);
+            query_data, k);
         size_t nbResults = result.size();
 
         for (int i = nbResults - 1; i >= 0; i--) {
@@ -207,8 +202,9 @@ public:
     int dim;
     int data_size;
     bool normalize = false;
-    hnswlib::ENCODEFUNC encode_func_;
-    hnswlib::DECODEFUNC decode_func_;
+    hnswlib::DecoderFloat16 * decoder_float16;
+    hnswlib::ENCODEFUNC<dist_t, uint16_t> encode_func_float16;
+    hnswlib::DECODEFUNC<dist_t, uint16_t> decode_func_float16;
     Precision precision = Float32;
     hnswlib::AlgorithmInterface<dist_t> * appr_alg;
     hnswlib::DISTFUNC <dist_t> fstdistfunc_;
@@ -217,6 +213,7 @@ public:
 
     ~Index() {
         delete space;
+        delete decoder_float16;
         if (appr_alg)
             delete appr_alg;
     }

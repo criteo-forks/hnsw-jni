@@ -92,7 +92,7 @@ JNIEXPORT jobject JNICALL Java_com_criteo_hnsw_HnswLib_getItem(JNIEnv *env, jcla
 
 JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer, jobject distance_result_buffer, jobjectArray result_vectors);
 
-JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_decodeItem(JNIEnv *env, jclass jobj, jlong pointer, jobject src_buffer, jobject dst_buffer);
+JNIEXPORT jboolean JNICALL Java_com_criteo_hnsw_HnswLib_decodeItem(JNIEnv *env, jclass jobj, jlong pointer, jobject src_buffer, jobject dst_buffer);
 
 JNIEXPORT jfloat JNICALL Java_com_criteo_hnsw_HnswLib_getDistanceBetweenLabels(JNIEnv *env, jclass jobj, jlong pointer, jlong label1, jlong label2);
 

@@ -10,15 +10,15 @@ float get_distance(void* a, void* b, int32_t dim, hnswlib::SpaceInterface<float>
     return dist_func(a, b, dist_func_param);
 }
 
-void to_float16(hnswlib::L2SpaceF16* space, std::vector<float> &src, std::vector<uint16_t> &dst) {
-    auto encode_func = space->get_encode_func();
-    auto dist_func_param = space->get_dist_func_param();
+void to_float16(hnswlib::DecoderFloat16* decoder, std::vector<float> &src, std::vector<uint16_t> &dst) {
+    auto encode_func = decoder->get_encode_func();
+    auto dist_func_param = decoder->get_dist_func_param();
     encode_func(src.data(), dst.data(), dist_func_param);
 }
 
-void to_float32(hnswlib::L2SpaceF16* space, std::vector<uint16_t> &src, std::vector<float> &dst) {
-    auto decode_func = space->get_decode_func();
-    auto dist_func_param = space->get_dist_func_param();
+void to_float32(hnswlib::DecoderFloat16* decoder, std::vector<uint16_t> &src, std::vector<float> &dst) {
+    auto decode_func = decoder->get_decode_func();
+    auto dist_func_param = decoder->get_dist_func_param();
     decode_func(src.data(), dst.data(), dist_func_param);
 }
 
@@ -39,11 +39,11 @@ TEST_CASE("Check Float16 encoding-decoding on small vectors (1 - 16)") {
 
     for (int32_t dim = 1; dim < a.size(); dim++) {
         CAPTURE(dim);
-        auto space = new hnswlib::L2SpaceF16(dim);
+        auto decoder = new hnswlib::DecoderFloat16(dim);
         std::vector<uint16_t> a_f16(dim);
-        to_float16(space, a, a_f16);
+        to_float16(decoder, a, a_f16);
         std::vector<float> a_f32(dim);
-        to_float32(space, a_f16, a_f32);
+        to_float32(decoder, a_f16, a_f32);
         for (int32_t i = 0; i < dim; i++) {
             auto actual = a_f32[i];
             auto expected = a[i];
@@ -51,7 +51,7 @@ TEST_CASE("Check Float16 encoding-decoding on small vectors (1 - 16)") {
             CAPTURE(epsilon);
             REQUIRE(is_approx_euqal(actual, expected, epsilon));
         }
-        delete space;
+        delete decoder;
     }
 }
 
@@ -67,17 +67,17 @@ TEST_CASE("Check Float16 encoding-decoding on large vectors") {
         for(int j = 0; j < dim; j++) {
             a[j] = (float) rand() / RAND_MAX;
         }
-        auto space = new hnswlib::L2SpaceF16(dim);
+        auto decoder = new hnswlib::DecoderFloat16(dim);
         std::vector<uint16_t> a_f16(dim);
-        to_float16(space, a, a_f16);
+        to_float16(decoder, a, a_f16);
         std::vector<float> a_f32(dim);
-        to_float32(space, a_f16, a_f32);
+        to_float32(decoder, a_f16, a_f32);
         for (int32_t i = 0; i < dim; i++) {
             auto decoded_f16 = a_f32[i];
             auto expected = a[i];
             REQUIRE(is_approx_euqal(decoded_f16, expected, epsilon));
         }
-        delete space;
+        delete decoder;
     }
 }
 
@@ -98,6 +98,7 @@ TEST_CASE("Check L2 distance computation on small vectors") {
     };
     for (std::pair<int32_t, std::pair<float, float>> element : expected_distances) {
         auto dim = element.first;
+        auto decoder = new hnswlib::DecoderFloat16(dim);
         CAPTURE(dim);
         float epsilon = element.second.first;
         float expected_distance = element.second.second;
@@ -110,12 +111,13 @@ TEST_CASE("Check L2 distance computation on small vectors") {
         space = new hnswlib::L2SpaceF16(dim);
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
 
-        to_float16((hnswlib::L2SpaceF16*)space, a, a_f16);
-        to_float16((hnswlib::L2SpaceF16*)space, b, b_f16);
+        to_float16(decoder, a, a_f16);
+        to_float16(decoder, b, b_f16);
 
         result = get_distance(a_f16.data(), b_f16.data(), dim, space);
         REQUIRE(is_approx_euqal(result, expected_distance, epsilon));
         delete space;
+        delete decoder;
     }
 }
 
@@ -138,6 +140,7 @@ TEST_CASE ("Check L2 distance computation on large vectors") {
     for (std::pair<int32_t, std::pair<float, float>> element : expected_distances) {
         auto dim = element.first;
         CAPTURE(dim);
+        auto decoder = new hnswlib::DecoderFloat16(dim);
         std::vector<float> a(dim), b(dim);
         for(int j = 0; j < dim; j++) {
             a[j] = (float) rand() / RAND_MAX;
@@ -158,10 +161,11 @@ TEST_CASE ("Check L2 distance computation on large vectors") {
 
         space = new hnswlib::L2SpaceF16(dim);
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
-        to_float16((hnswlib::L2SpaceF16*)space, a, a_f16);
-        to_float16((hnswlib::L2SpaceF16*)space, b, b_f16);
+        to_float16(decoder, a, a_f16);
+        to_float16(decoder, b, b_f16);
         result = get_distance(a_f16.data(), b_f16.data(), dim, space);
         REQUIRE(is_approx_euqal(result, expected_distance, epsilon16));
         delete space;
+        delete decoder;
     }
 }
