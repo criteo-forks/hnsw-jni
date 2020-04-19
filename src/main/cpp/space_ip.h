@@ -19,31 +19,22 @@ namespace hnswlib {
 // Favor using AVX if available.
     static float
     InnerProductSIMD4Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float PORTABLE_ALIGN32 TmpRes[8];
         float *pVect1 = (float *) pVect1v;
         float *pVect2 = (float *) pVect2v;
         size_t qty = *((size_t *) qty_ptr);
+        size_t qty8 = qty >> 3;
+        size_t qty4 = qty >> 2;
 
-        size_t qty16 = qty / 16;
-        size_t qty4 = qty / 4;
-
-        const float *pEnd1 = pVect1 + 16 * qty16;
-        const float *pEnd2 = pVect1 + 4 * qty4;
+        const float* pEnd1 = pVect1 + (qty8 << 3);
+        const float* pEnd2 = pVect1 + (qty4 << 2);
 
         __m256 sum256 = _mm256_set1_ps(0);
 
         while (pVect1 < pEnd1) {
-            //_mm_prefetch((char*)(pVect2 + 16), _MM_HINT_T0);
 
             __m256 v1 = _mm256_loadu_ps(pVect1);
             pVect1 += 8;
             __m256 v2 = _mm256_loadu_ps(pVect2);
-            pVect2 += 8;
-            sum256 = _mm256_add_ps(sum256, _mm256_mul_ps(v1, v2));
-
-            v1 = _mm256_loadu_ps(pVect1);
-            pVect1 += 8;
-            v2 = _mm256_loadu_ps(pVect2);
             pVect2 += 8;
             sum256 = _mm256_add_ps(sum256, _mm256_mul_ps(v1, v2));
         }
@@ -58,7 +49,7 @@ namespace hnswlib {
             pVect2 += 4;
             sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
         }
-
+        float PORTABLE_ALIGN32 TmpRes[4];
         _mm_store_ps(TmpRes, sum_prod);
         float sum = TmpRes[0] + TmpRes[1] + TmpRes[2] + TmpRes[3];;
         return 1.0f - sum;
@@ -68,45 +59,15 @@ namespace hnswlib {
 
     static float
     InnerProductSIMD4Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float PORTABLE_ALIGN32 TmpRes[8];
         float *pVect1 = (float *) pVect1v;
         float *pVect2 = (float *) pVect2v;
         size_t qty = *((size_t *) qty_ptr);
+        size_t qty4 = qty >> 2;
 
-        size_t qty16 = qty / 16;
-        size_t qty4 = qty / 4;
-
-        const float *pEnd1 = pVect1 + 16 * qty16;
-        const float *pEnd2 = pVect1 + 4 * qty4;
+        const float* pEnd2 = pVect1 + (qty4 << 2);
 
         __m128 v1, v2;
         __m128 sum_prod = _mm_set1_ps(0);
-
-        while (pVect1 < pEnd1) {
-            v1 = _mm_loadu_ps(pVect1);
-            pVect1 += 4;
-            v2 = _mm_loadu_ps(pVect2);
-            pVect2 += 4;
-            sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
-
-            v1 = _mm_loadu_ps(pVect1);
-            pVect1 += 4;
-            v2 = _mm_loadu_ps(pVect2);
-            pVect2 += 4;
-            sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
-
-            v1 = _mm_loadu_ps(pVect1);
-            pVect1 += 4;
-            v2 = _mm_loadu_ps(pVect2);
-            pVect2 += 4;
-            sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
-
-            v1 = _mm_loadu_ps(pVect1);
-            pVect1 += 4;
-            v2 = _mm_loadu_ps(pVect2);
-            pVect2 += 4;
-            sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
-        }
 
         while (pVect1 < pEnd2) {
             v1 = _mm_loadu_ps(pVect1);
@@ -115,7 +76,7 @@ namespace hnswlib {
             pVect2 += 4;
             sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
         }
-
+        float PORTABLE_ALIGN32 TmpRes[4];
         _mm_store_ps(TmpRes, sum_prod);
         float sum = TmpRes[0] + TmpRes[1] + TmpRes[2] + TmpRes[3];
 
@@ -127,35 +88,27 @@ namespace hnswlib {
 #if defined(USE_AVX)
 
     static float
-    InnerProductSIMD16Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float PORTABLE_ALIGN32 TmpRes[8];
+    InnerProductSIMD8Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
         float *pVect1 = (float *) pVect1v;
         float *pVect2 = (float *) pVect2v;
         size_t qty = *((size_t *) qty_ptr);
 
-        size_t qty16 = qty / 16;
+        size_t qty8 = qty >> 3;
 
-
-        const float *pEnd1 = pVect1 + 16 * qty16;
+        const float *pEnd1 = pVect1 + (qty8 << 3);
 
         __m256 sum256 = _mm256_set1_ps(0);
 
         while (pVect1 < pEnd1) {
-            //_mm_prefetch((char*)(pVect2 + 16), _MM_HINT_T0);
 
             __m256 v1 = _mm256_loadu_ps(pVect1);
             pVect1 += 8;
             __m256 v2 = _mm256_loadu_ps(pVect2);
             pVect2 += 8;
             sum256 = _mm256_add_ps(sum256, _mm256_mul_ps(v1, v2));
-
-            v1 = _mm256_loadu_ps(pVect1);
-            pVect1 += 8;
-            v2 = _mm256_loadu_ps(pVect2);
-            pVect2 += 8;
-            sum256 = _mm256_add_ps(sum256, _mm256_mul_ps(v1, v2));
         }
 
+        float PORTABLE_ALIGN32 TmpRes[8];
         _mm256_store_ps(TmpRes, sum256);
         float sum = TmpRes[0] + TmpRes[1] + TmpRes[2] + TmpRes[3] + TmpRes[4] + TmpRes[5] + TmpRes[6] + TmpRes[7];
 
@@ -165,15 +118,14 @@ namespace hnswlib {
 #elif defined(USE_SSE)
 
       static float
-      InnerProductSIMD16Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float PORTABLE_ALIGN32 TmpRes[8];
+      InnerProductSIMD8Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
         float *pVect1 = (float *) pVect1v;
         float *pVect2 = (float *) pVect2v;
         size_t qty = *((size_t *) qty_ptr);
 
-        size_t qty16 = qty / 16;
+        size_t qty8 = qty >> 3;
 
-        const float *pEnd1 = pVect1 + 16 * qty16;
+        const float *pEnd1 = pVect1 + (qty8 << 3);
 
         __m128 v1, v2;
         __m128 sum_prod = _mm_set1_ps(0);
@@ -190,19 +142,8 @@ namespace hnswlib {
             v2 = _mm_loadu_ps(pVect2);
             pVect2 += 4;
             sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
-
-            v1 = _mm_loadu_ps(pVect1);
-            pVect1 += 4;
-            v2 = _mm_loadu_ps(pVect2);
-            pVect2 += 4;
-            sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
-
-            v1 = _mm_loadu_ps(pVect1);
-            pVect1 += 4;
-            v2 = _mm_loadu_ps(pVect2);
-            pVect2 += 4;
-            sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
         }
+        float PORTABLE_ALIGN32 TmpRes[4];
         _mm_store_ps(TmpRes, sum_prod);
         float sum = TmpRes[0] + TmpRes[1] + TmpRes[2] + TmpRes[3];
 
@@ -213,14 +154,14 @@ namespace hnswlib {
 
 #if defined(USE_SSE) || defined(USE_AVX)
     static float
-    InnerProductSIMD16ExtResiduals(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
+    InnerProductSIMD8ExtResiduals(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
         size_t qty = *((size_t *) qty_ptr);
-        size_t qty16 = qty >> 4 << 4;
-        float res = InnerProductSIMD16Ext(pVect1v, pVect2v, &qty16);
-        float *pVect1 = (float *) pVect1v + qty16;
-        float *pVect2 = (float *) pVect2v + qty16;
+        size_t qty8 = qty >> 3 << 3;
+        float res = InnerProductSIMD8Ext(pVect1v, pVect2v, &qty8);
+        float *pVect1 = (float *) pVect1v + qty8;
+        float *pVect2 = (float *) pVect2v + qty8;
 
-        size_t qty_left = qty - qty16;
+        size_t qty_left = qty - qty8;
         float res_tail = InnerProduct(pVect1, pVect2, &qty_left);
         return res + res_tail - 1.0f;
     }
@@ -252,10 +193,10 @@ namespace hnswlib {
     #if defined(USE_AVX) || defined(USE_SSE)
             if (dim % 4 == 0)
                 fstdistfunc_ = InnerProductSIMD4Ext;
-            if (dim % 16 == 0)
-                fstdistfunc_ = InnerProductSIMD16Ext;
-            else if (dim > 16)
-                fstdistfunc_ = InnerProductSIMD16ExtResiduals;
+            if (dim % 8 == 0)
+                fstdistfunc_ = InnerProductSIMD8Ext;
+            else if (dim > 8)
+                fstdistfunc_ = InnerProductSIMD8ExtResiduals;
             else if (dim > 4)
                 fstdistfunc_ = InnerProductSIMD4ExtResiduals;
     #endif

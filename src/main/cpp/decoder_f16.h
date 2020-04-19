@@ -27,19 +27,13 @@ namespace hnswlib {
 #if defined(USE_AVX)
 
     static void
-    encode_vector_float16_SIMD16(const float* src, uint16_t* dst, const void *qty_ptr) {
+    encode_vector_float16_SIMD8(const float* src, uint16_t* dst, const void *qty_ptr) {
         size_t qty = *((size_t *) qty_ptr);
-        size_t qty16 = qty >> 4;
-        const float *end = src + (qty16 << 4);
+        size_t qty8 = qty >> 3;
+        const float *end = src + (qty8 << 3);
         __m128i f16;
         __m256 f32;
         while (src < end) {
-            f32 = _mm256_loadu_ps(src);
-            src += 8;
-            f16 = _mm256_cvtps_ph(f32, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
-            _mm_storeu_si128((__m128i*)dst, f16);
-            dst +=8;
-
             f32 = _mm256_loadu_ps(src);
             src += 8;
             f16 = _mm256_cvtps_ph(f32, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
@@ -49,19 +43,13 @@ namespace hnswlib {
     }
 
     static void
-    decode_float16_vector_SIMD16(const uint16_t* src, float* dst, const void *qty_ptr) {
+    decode_float16_vector_SIMD8(const uint16_t* src, float* dst, const void *qty_ptr) {
         size_t qty = *((size_t *) qty_ptr);
-        size_t qty16 = qty >> 4;
-        const uint16_t *end = src + (qty16 << 4);
+        size_t qty8 = qty >> 3;
+        const uint16_t *end = src + (qty8 << 3);
         __m128i f16;
         __m256 f32;
         while (src < end) {
-            f16 = _mm_loadu_si128((__m128i*)src);
-            src += 8;
-            f32 = _mm256_cvtph_ps(f16);
-            _mm256_storeu_ps(dst, f32);
-            dst +=8;
-
             f16 = _mm_loadu_si128((__m128i*)src);
             src += 8;
             f32 = _mm256_cvtph_ps(f16);
@@ -73,25 +61,13 @@ namespace hnswlib {
 #elif defined(USE_SSE)
 
     static void
-    encode_vector_float16_SIMD16(const float* src, uint16_t* dst, const void *qty_ptr) {
+    encode_vector_float16_SIMD8(const float* src, uint16_t* dst, const void *qty_ptr) {
         size_t qty = *((size_t *) qty_ptr);
-        size_t qty16 = qty >> 4;
-        const float *end = src + (qty16 << 4);
+        size_t qty8 = qty >> 3;
+        const float *end = src + (qty8 << 3);
         __m128i f16;
         __m128 f32;
         while (src < end) {
-            f32 = _mm_loadu_ps(src);
-            src += 4;
-            f16 = _mm_cvtps_ph(f32, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
-            _mm_storel_epi64((__m128i*)dst, f16);
-            dst += 4;
-
-            f32 = _mm_loadu_ps(src);
-            src += 4;
-            f16 = _mm_cvtps_ph(f32, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
-            _mm_storel_epi64((__m128i*)dst, f16);
-            dst += 4;
-
             f32 = _mm_loadu_ps(src);
             src += 4;
             f16 = _mm_cvtps_ph(f32, _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC);
@@ -107,25 +83,13 @@ namespace hnswlib {
     }
 
     static void
-    decode_float16_vector_SIMD16(const uint16_t* src, float* dst, const void *qty_ptr) {
+    decode_float16_vector_SIMD8(const uint16_t* src, float* dst, const void *qty_ptr) {
         size_t qty = *((size_t *) qty_ptr);
-        size_t qty16 = qty >> 4;
-        const uint16_t *end = src + (qty16 << 4);
+        size_t qty8 = qty >> 3;
+        const uint16_t *end = src + (qty8 << 3);
         __m128i f16;
         __m128 f32;
         while (src < end) {
-            f16 = _mm_loadu_si128((const __m128i*)src);
-            src += 4;
-            f32 = _mm_cvtph_ps(f16);
-            _mm_storeu_ps(dst, f32);
-            dst +=4;
-
-            f16 = _mm_loadu_si128((const __m128i*)src);
-            src += 4;
-            f32 = _mm_cvtph_ps(f16);
-            _mm_storeu_ps(dst, f32);
-            dst +=4;
-
             f16 = _mm_loadu_si128((const __m128i*)src);
             src += 4;
             f32 = _mm_cvtph_ps(f16);
@@ -143,23 +107,23 @@ namespace hnswlib {
 
 #if defined(USE_SSE) || defined(USE_AVX)
     static void
-    encode_vector_float16_SIMD16Residuals(const float* src, uint16_t* dst, const void *qty_ptr) {
+    encode_vector_float16_SIMD8Residuals(const float* src, uint16_t* dst, const void *qty_ptr) {
         size_t qty = *((size_t *) qty_ptr);
-        size_t qty16 = qty >> 4 << 4;
-        encode_vector_float16_SIMD16(src, dst, &qty16);
+        size_t qty8 = qty >> 3 << 3;
+        encode_vector_float16_SIMD8(src, dst, &qty8);
 
-        size_t qty_left = qty - qty16;
-        encode_vector_float16(src + qty16, dst + qty16, &qty_left);
+        size_t qty_left = qty - qty8;
+        encode_vector_float16(src + qty8, dst + qty8, &qty_left);
     }
 
     static void
-    decode_float16_vector_SIMD16Residuals(const uint16_t* src, float* dst, const void *qty_ptr) {
+    decode_float16_vector_SIMD8Residuals(const uint16_t* src, float* dst, const void *qty_ptr) {
         size_t qty = *((size_t *) qty_ptr);
-        size_t qty16 = qty >> 4 << 4;
-        decode_float16_vector_SIMD16(src, dst, &qty16);
+        size_t qty8 = qty >> 3 << 3;
+        decode_float16_vector_SIMD8(src, dst, &qty8);
 
-        size_t qty_left = qty - qty16;
-        decode_float16_vector(src + qty16, dst + qty16, &qty_left);
+        size_t qty_left = qty - qty8;
+        decode_float16_vector(src + qty8, dst + qty8, &qty_left);
     }
 #endif
 
@@ -237,17 +201,17 @@ namespace hnswlib {
             fast_encode_func_ = encode_vector_float16;
             fast_decode_func_ = decode_float16_vector;
         #if defined(USE_SSE) || defined(USE_AVX)
-            if (dim % 16 == 0) {
-                fast_encode_func_ = encode_vector_float16_SIMD16;
-                fast_decode_func_ = decode_float16_vector_SIMD16;
+            if (dim % 8 == 0) {
+                fast_encode_func_ = encode_vector_float16_SIMD8;
+                fast_decode_func_ = decode_float16_vector_SIMD8;
             }
             else if (dim % 4 == 0) {
                 fast_encode_func_ = encode_vector_float16_SIMD4;
                 fast_decode_func_ = decode_float16_vector_SIMD4;
             }
-            else if (dim > 16) {
-                fast_encode_func_ = encode_vector_float16_SIMD16Residuals;
-                fast_decode_func_ = decode_float16_vector_SIMD16Residuals;
+            else if (dim > 8) {
+                fast_encode_func_ = encode_vector_float16_SIMD8Residuals;
+                fast_decode_func_ = decode_float16_vector_SIMD8Residuals;
             }
             else if (dim > 4) {
                 fast_encode_func_ = encode_vector_float16_SIMD4Residuals;
