@@ -84,6 +84,7 @@ namespace hnswlib {
 #include "space_l2_f16.h"
 #include "decoder_f16.h"
 #include "space_ip.h"
+#include "space_ip_f16.h"
 #include "space_kendall.h"
 #include "bruteforce.h"
 #include "hnswalg.h"

@@ -10,10 +10,12 @@ TEST_CASE("Serialize and deserialize indices") {
     int32_t dim = 100;
     std::vector<std::pair<Precision, Distance>> p {
         std::make_pair(Float16, Euclidean),
+        std::make_pair(Float16, InnerProduct),
         std::make_pair(Float32, Euclidean),
         std::make_pair(Float32, InnerProduct),
     };
     std::vector<float> e {
+        5E-4,
         5E-4,
         1E-30,
         1E-30,

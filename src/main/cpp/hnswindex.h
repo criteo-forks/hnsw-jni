@@ -24,30 +24,28 @@ class Index {
 public:
     Index(Distance distance, const int dim, const Precision precision = Float32) :
         dim(dim), precision(precision) {
-        if (precision == Float16) {
-            if(distance == Euclidean) {
-                space = new hnswlib::L2SpaceF16(dim);
-            }
-            else {
-                throw std::runtime_error(std::to_string(precision) + " precision does not support distance " + std::to_string(distance));
-            }
-        } else {
-            if(distance == Euclidean) {
-                space = new hnswlib::L2Space(dim);
-            }
-            else if (distance == Angular) {
-                space = new hnswlib::InnerProductSpace(dim);
-                normalize = true;
-            }
-            else if (distance == InnerProduct) {
-                space = new hnswlib::InnerProductSpace(dim);
-            }
-            else if (distance == Kendall) {
+        switch (distance) {
+            case Euclidean:
+                if(precision == Float16)
+                     space = new hnswlib::L2SpaceF16(dim);
+                else space = new hnswlib::L2Space(dim);
+                break;
+            case Angular:
+            case InnerProduct:
+                if(precision == Float16)
+                     space = new hnswlib::InnerProductSpaceF16(dim);
+                else space = new hnswlib::InnerProductSpace(dim);
+                normalize = distance == Angular;
+                break;
+            case Kendall:
                 space = new hnswlib::KendallSpace(dim);
-            }
-            else {
+                if (precision != Float32) {
+                    std::cerr<<"Warning: Kendal distance does not support other precisoin than float32\n";
+                }
+                break;
+            default:
                 throw std::runtime_error("Distance not supported: " + std::to_string(distance));
-            }
+                break;
         }
         data_size = space->get_data_size();
         fstdistfunc_ = space->get_dist_func();

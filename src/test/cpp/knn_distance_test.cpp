@@ -179,9 +179,9 @@ TEST_CASE("Check Inner Product distance computation on small vectors") {
         {2,  {1E-30,   1 - (2 + 8)}},
         {3,  {1E-30,   1 - (2 + 8 + 18)}},
         {4,  {1E-30,   1 - (2 + 8 + 18 + 0)}},
-        {5,  {1E-5 ,   1 - (2 + 8 + 18 + 0 + 0.03)}},
-        {6,  {1E-5 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04)}},
-        {7,  {1E-5 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04 + 0.09)}},
+        {5,  {1E-6 ,   1 - (2 + 8 + 18 + 0 + 0.03)}},
+        {6,  {1E-6 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04)}},
+        {7,  {1E-6 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04 + 0.09)}},
         {8,  {1E-5 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04 + 0.09 + 3E-5)}},
         {9,  {1E-4 ,   1 - (2 + 8 + 18 + 0 + 0.03 + -0.04 + 0.09 + 3E-5 + 2.011009)}},
     };
@@ -192,24 +192,39 @@ TEST_CASE("Check Inner Product distance computation on small vectors") {
         float expected_distance = element.second.second;
         INFO("float32 (no error)");
         hnswlib::SpaceInterface<float>* space = new hnswlib::InnerProductSpace(dim);
-        auto result = get_distance(a.data(), b.data(), dim, space);
-        REQUIRE_EQ(result, expected_distance);
+        auto result32 = get_distance(a.data(), b.data(), dim, space);
+        CAPTURE(expected_distance);
+        CAPTURE(result32);
+        REQUIRE_EQ(result32, expected_distance);
         CAPTURE("float16. Allowed Error: " << epsilon);
         delete space;
+
+        auto decoder = new hnswlib::DecoderFloat16(dim);
+        space = new hnswlib::InnerProductSpaceF16(dim);
+        std::vector<uint16_t> a_f16(dim), b_f16(dim);
+
+        to_float16(decoder, a, a_f16);
+        to_float16(decoder, b, b_f16);
+
+        auto result16 = get_distance(a_f16.data(), b_f16.data(), dim, space);
+        CAPTURE(result16);
+        REQUIRE(is_approx_euqal(result16, expected_distance, epsilon));
+        delete space;
+        delete decoder;
     }
 }
 
 TEST_CASE ("Check Inner Product distance computation on large vectors") {
     std::unordered_map<int32_t, std::pair<float, float>> expected_distances = {
     /* dim    | epsilon_f32 | epsilon_f16 */
-        {16,       {1E-6,      1E-4}},
-        {17,       {1E-6,      2E-3}},
-        {32,       {1E-6,      1E-3}},
-        {34,       {1E-6,      1E-3}},
-        {54,       {1E-6,      1E-3}},
-        {100,      {1E-6,      1E-3}},
-        {256,      {1E-5,      1E-3}},
-        {300,      {1E-4,      1E-3}},
+        {16,       {1E-6,      3E-4}},
+        {17,       {1E-6,      3E-4}},
+        {32,       {1E-6,      3E-4}},
+        {34,       {1E-6,      3E-4}},
+        {54,       {1E-6,      3E-4}},
+        {100,      {1E-6,      3E-4}},
+        {256,      {1E-5,      3E-4}},
+        {300,      {1E-4,      3E-4}},
         {1000,     {1E-4,      1E-3}},
         {1024,     {1E-4,      1E-3}},
     };
@@ -220,17 +235,33 @@ TEST_CASE ("Check Inner Product distance computation on large vectors") {
         CAPTURE(dim);
         std::vector<float> a(dim), b(dim);
         for(int j = 0; j < dim; j++) {
-            a[j] = (float) rand() / RAND_MAX;
-            b[j] = component_ratio / a[j];
+            a[j] = ((float) rand() / RAND_MAX ) / (float)dim;
+            b[j] = (component_ratio / a[j]) / (float)dim;
         }
-        float expected_distance = 1 - dim * component_ratio;
+        float expected_distance = 1 - component_ratio;
 
         float epsilon32 = element.second.first;
         CAPTURE("float32 Allowed Error: " << epsilon32);
 
         hnswlib::SpaceInterface<float>* space = new hnswlib::InnerProductSpace(dim);
-        auto result = get_distance(a.data(), b.data(), dim, space);
-        REQUIRE(is_approx_euqal(result, expected_distance, epsilon32));
+        auto result32 = get_distance(a.data(), b.data(), dim, space);
+        CAPTURE(expected_distance);
+        CAPTURE(result32);
+        REQUIRE(is_approx_euqal(result32, expected_distance, epsilon32));
         delete space;
+
+        auto decoder = new hnswlib::DecoderFloat16(dim);
+        float epsilon16 = element.second.second;
+        CAPTURE("float16. Allowed Error: " << epsilon16);
+
+        space = new hnswlib::InnerProductSpaceF16(dim);
+        std::vector<uint16_t> a_f16(dim), b_f16(dim);
+        to_float16(decoder, a, a_f16);
+        to_float16(decoder, b, b_f16);
+        auto result16 = get_distance(a_f16.data(), b_f16.data(), dim, space);
+        CAPTURE(result16);
+        REQUIRE(is_approx_euqal(result16, expected_distance, epsilon16));
+        delete space;
+        delete decoder;
     }
 }
