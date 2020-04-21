@@ -5,13 +5,12 @@ namespace hnswlib {
 
     static float
     InnerProduct(const void *pVect1, const void *pVect2, const void *qty_ptr) {
-        size_t qty = *((size_t *) qty_ptr);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
         float res = 0;
         for (unsigned i = 0; i < qty; i++) {
             res += ((float *) pVect1)[i] * ((float *) pVect2)[i];
         }
         return (1.0f - res);
-
     }
 
 #if defined(USE_AVX)
@@ -19,14 +18,14 @@ namespace hnswlib {
 // Favor using AVX if available.
     static float
     InnerProductSIMD4Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float *pVect1 = (float *) pVect1v;
-        float *pVect2 = (float *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty8 = qty >> 3;
-        size_t qty4 = qty >> 2;
+        auto pVect1 = static_cast<const float*>(pVect1v);
+        auto pVect2 = static_cast<const float*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3;
+        const auto qty4 = qty >> 2;
 
-        const float* pEnd1 = pVect1 + (qty8 << 3);
-        const float* pEnd2 = pVect1 + (qty4 << 2);
+        const auto pEnd1 = pVect1 + (qty8 << 3);
+        const auto pEnd2 = pVect1 + (qty4 << 2);
 
         __m256 sum256 = _mm256_set1_ps(0);
 
@@ -59,12 +58,12 @@ namespace hnswlib {
 
     static float
     InnerProductSIMD4Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float *pVect1 = (float *) pVect1v;
-        float *pVect2 = (float *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty4 = qty >> 2;
+        auto pVect1 = static_cast<const float*>(pVect1v);
+        auto pVect2 = static_cast<const float*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty4 = qty >> 2;
 
-        const float* pEnd2 = pVect1 + (qty4 << 2);
+        const auto pEnd2 = pVect1 + (qty4 << 2);
 
         __m128 v1, v2;
         __m128 sum_prod = _mm_set1_ps(0);
@@ -89,13 +88,11 @@ namespace hnswlib {
 
     static float
     InnerProductSIMD8Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float *pVect1 = (float *) pVect1v;
-        float *pVect2 = (float *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
-
-        size_t qty8 = qty >> 3;
-
-        const float *pEnd1 = pVect1 + (qty8 << 3);
+        auto pVect1 = static_cast<const float*>(pVect1v);
+        auto pVect2 = static_cast<const float*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3;
+        const auto pEnd1 = pVect1 + (qty8 << 3);
 
         __m256 sum256 = _mm256_set1_ps(0);
 
@@ -119,13 +116,11 @@ namespace hnswlib {
 
       static float
       InnerProductSIMD8Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float *pVect1 = (float *) pVect1v;
-        float *pVect2 = (float *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
-
-        size_t qty8 = qty >> 3;
-
-        const float *pEnd1 = pVect1 + (qty8 << 3);
+        auto pVect1 = static_cast<const float*>(pVect1v);
+        auto pVect2 = static_cast<const float*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3;
+        const auto pEnd1 = pVect1 + (qty8 << 3);
 
         __m128 v1, v2;
         __m128 sum_prod = _mm_set1_ps(0);
@@ -155,28 +150,26 @@ namespace hnswlib {
 #if defined(USE_SSE) || defined(USE_AVX)
     static float
     InnerProductSIMD8ExtResiduals(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty8 = qty >> 3 << 3;
-        float res = InnerProductSIMD8Ext(pVect1v, pVect2v, &qty8);
-        float *pVect1 = (float *) pVect1v + qty8;
-        float *pVect2 = (float *) pVect2v + qty8;
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3 << 3;
+        const auto res = InnerProductSIMD8Ext(pVect1v, pVect2v, &qty8);
+        const auto pVect1 = static_cast<const float*>(pVect1v) + qty8;
+        const auto pVect2 = static_cast<const float*>(pVect2v) + qty8;
 
-        size_t qty_left = qty - qty8;
-        float res_tail = InnerProduct(pVect1, pVect2, &qty_left);
+        const auto qty_left = qty - qty8;
+        const auto res_tail = InnerProduct(pVect1, pVect2, &qty_left);
         return res + res_tail - 1.0f;
     }
 
     static float
     InnerProductSIMD4ExtResiduals(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty4 = qty >> 2 << 2;
-
-        float res = InnerProductSIMD4Ext(pVect1v, pVect2v, &qty4);
-        size_t qty_left = qty - qty4;
-
-        float *pVect1 = (float *) pVect1v + qty4;
-        float *pVect2 = (float *) pVect2v + qty4;
-        float res_tail = InnerProduct(pVect1, pVect2, &qty_left);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty4 = qty >> 2 << 2;
+        const auto res = InnerProductSIMD4Ext(pVect1v, pVect2v, &qty4);
+        const auto qty_left = qty - qty4;
+        const auto pVect1 = static_cast<const float*>(pVect1v) + qty4;
+        const auto pVect2 = static_cast<const float*>(pVect2v) + qty4;
+        const auto res_tail = InnerProduct(pVect1, pVect2, &qty_left);
 
         return res + res_tail - 1.0f;
     }
@@ -185,10 +178,12 @@ namespace hnswlib {
     class InnerProductSpace : public SpaceInterface<float> {
 
         DISTFUNC<float> fstdistfunc_;
-        size_t data_size_;
+        const size_t data_size_;
         size_t dim_;
     public:
-        InnerProductSpace(size_t dim) {
+        InnerProductSpace(size_t dim)
+        : data_size_(dim * sizeof(float))
+        , dim_(dim) {
             fstdistfunc_ = InnerProduct;
     #if defined(USE_AVX) || defined(USE_SSE)
             if (dim % 4 == 0)
@@ -200,8 +195,6 @@ namespace hnswlib {
             else if (dim > 4)
                 fstdistfunc_ = InnerProductSIMD4ExtResiduals;
     #endif
-            dim_ = dim;
-            data_size_ = dim * sizeof(float);
         }
 
         size_t get_data_size() {

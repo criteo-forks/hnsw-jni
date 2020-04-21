@@ -5,9 +5,9 @@ namespace hnswlib {
 
     static float
     L2Sqr(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float *pVect1 = (float *) pVect1v;
-        float *pVect2 = (float *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
+        auto pVect1 = static_cast<const float*>(pVect1v);
+        auto pVect2 = static_cast<const float*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
 
         float res = 0;
         for (size_t i = 0; i < qty; i++) {
@@ -24,12 +24,12 @@ namespace hnswlib {
     // Favor using AVX if available.
     static float
     L2SqrSIMD8Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float *pVect1 = (float *) pVect1v;
-        float *pVect2 = (float *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty8 = qty >> 3;
+        auto pVect1 = static_cast<const float*>(pVect1v);
+        auto pVect2 = static_cast<const float*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3;
 
-        const float *pEnd1 = pVect1 + (qty8 << 3);
+        const auto pEnd1 = pVect1 + (qty8 << 3);
 
         __m256 diff, v1, v2;
         __m256 sum = _mm256_set1_ps(0);
@@ -52,12 +52,12 @@ namespace hnswlib {
 
     static float
     L2SqrSIMD8Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float *pVect1 = (float *) pVect1v;
-        float *pVect2 = (float *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty8 = qty >> 3;
+        auto pVect1 = static_cast<const float*>(pVect1v);
+        auto pVect2 = static_cast<const float*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3;
 
-        const float *pEnd1 = pVect1 + (qty8 << 3);
+        const auto pEnd1 = pVect1 + (qty8 << 3);
 
         __m128 diff, v1, v2;
         __m128 sum = _mm_set1_ps(0);
@@ -87,14 +87,14 @@ namespace hnswlib {
 #if defined(USE_SSE) || defined(USE_AVX)
     static float
     L2SqrSIMD8ExtResiduals(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty8 = qty >> 3 << 3;
-        float res = L2SqrSIMD8Ext(pVect1v, pVect2v, &qty8);
-        float *pVect1 = (float *) pVect1v + qty8;
-        float *pVect2 = (float *) pVect2v + qty8;
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3 << 3;
+        const auto res = L2SqrSIMD8Ext(pVect1v, pVect2v, &qty8);
+        const auto pVect1 = static_cast<const float*>(pVect1v) + qty8;
+        const auto pVect2 = static_cast<const float*>(pVect2v) + qty8;
 
-        size_t qty_left = qty - qty8;
-        float res_tail = L2Sqr(pVect1, pVect2, &qty_left);
+        const auto qty_left = qty - qty8;
+        const auto res_tail = L2Sqr(pVect1, pVect2, &qty_left);
         return (res + res_tail);
     }
 #endif
@@ -103,13 +103,12 @@ namespace hnswlib {
 #ifdef USE_SSE
     static float
     L2SqrSIMD4Ext(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        float *pVect1 = (float *) pVect1v;
-        float *pVect2 = (float *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
+        auto pVect1 = static_cast<const float*>(pVect1v);
+        auto pVect2 = static_cast<const float*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
 
-        size_t qty4 = qty >> 2;
-
-        const float *pEnd1 = pVect1 + (qty4 << 2);
+        const auto qty4 = qty >> 2;
+        const auto pEnd1 = pVect1 + (qty4 << 2);
 
         __m128 diff, v1, v2;
         __m128 sum = _mm_set1_ps(0);
@@ -129,15 +128,13 @@ namespace hnswlib {
 
     static float
     L2SqrSIMD4ExtResiduals(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty4 = qty >> 2 << 2;
-
-        float res = L2SqrSIMD4Ext(pVect1v, pVect2v, &qty4);
-        size_t qty_left = qty - qty4;
-
-        float *pVect1 = (float *) pVect1v + qty4;
-        float *pVect2 = (float *) pVect2v + qty4;
-        float res_tail = L2Sqr(pVect1, pVect2, &qty_left);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty4 = qty >> 2 << 2;
+        const auto res = L2SqrSIMD4Ext(pVect1v, pVect2v, &qty4);
+        const auto qty_left = qty - qty4;
+        const auto pVect1 = static_cast<const float*>(pVect1v) + qty4;
+        const auto pVect2 = static_cast<const float*>(pVect2v) + qty4;
+        const auto res_tail = L2Sqr(pVect1, pVect2, &qty_left);
 
         return (res + res_tail);
     }
@@ -146,10 +143,12 @@ namespace hnswlib {
     class L2Space : public SpaceInterface<float> {
 
         DISTFUNC<float> fstdistfunc_;
-        size_t data_size_;
+        const size_t data_size_;
         size_t dim_;
     public:
-        L2Space(size_t dim) {
+        L2Space(size_t dim) 
+        : data_size_(dim * sizeof(float))
+        , dim_(dim) {
             fstdistfunc_ = L2Sqr;
         #if defined(USE_SSE) || defined(USE_AVX)
             if (dim % 8 == 0)
@@ -161,8 +160,6 @@ namespace hnswlib {
             else if (dim > 4)
                 fstdistfunc_ = L2SqrSIMD4ExtResiduals;
         #endif
-            dim_ = dim;
-            data_size_ = dim * sizeof(float);
         }
 
         size_t get_data_size() {
@@ -183,7 +180,7 @@ namespace hnswlib {
     static int
     L2SqrI(const void *__restrict pVect1, const void *__restrict pVect2, const void *__restrict qty_ptr) {
 
-        size_t qty = *((size_t *) qty_ptr);
+        auto qty = *static_cast<const size_t*>(qty_ptr);
         int res = 0;
         unsigned char *a = (unsigned char *) pVect1;
         unsigned char *b = (unsigned char *) pVect2;

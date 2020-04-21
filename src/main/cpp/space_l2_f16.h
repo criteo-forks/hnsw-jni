@@ -4,9 +4,9 @@
 namespace hnswlib {
 
     static float L2SqrF16(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        uint16_t *pVect1 = (uint16_t *) pVect1v;
-        uint16_t *pVect2 = (uint16_t *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
+        auto pVect1 = static_cast<const uint16_t*>(pVect1v);
+        auto pVect2 = static_cast<const uint16_t*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
         float res = 0;
         for (size_t i = 0; i < qty; i++) {
             float a = decode_fp16(*pVect1);
@@ -25,12 +25,12 @@ namespace hnswlib {
     // Favor using AVX if available.
     static float
     L2SqrSIMD8ExtF16(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        uint16_t *pVect1 = (uint16_t *) pVect1v;
-        uint16_t *pVect2 = (uint16_t *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty8 = qty >> 3;
+        auto pVect1 = static_cast<const uint16_t*>(pVect1v);
+        auto pVect2 = static_cast<const uint16_t*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3;
 
-        const uint16_t *pEnd1 = pVect1 + (qty8 << 3);
+        const auto pEnd1 = pVect1 + (qty8 << 3);
 
         __m128i v1f16, v2f16;
         __m256 diff, v1, v2;
@@ -56,12 +56,12 @@ namespace hnswlib {
 
     static float
     L2SqrSIMD8ExtF16(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        uint16_t *pVect1 = (uint16_t *) pVect1v;
-        uint16_t *pVect2 = (uint16_t *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty8 = qty >> 3;
+        auto pVect1 = static_cast<const uint16_t*>(pVect1v);
+        auto pVect2 = static_cast<const uint16_t*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3;
 
-        const uint16_t *pEnd1 = pVect1 + (qty8 << 3);
+        const auto pEnd1 = pVect1 + (qty8 << 3);
 
         __m128i v1f16, v2f16;
         __m128 diff, v1, v2;
@@ -97,14 +97,13 @@ namespace hnswlib {
 #if defined(USE_SSE) || defined(USE_AVX)
     static float
     L2SqrSIMD8ExtF16Residuals(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty8 = qty >> 3 << 3;
-        float res = L2SqrSIMD8ExtF16(pVect1v, pVect2v, &qty8);
-        uint16_t *pVect1 = (uint16_t *) pVect1v + qty8;
-        uint16_t *pVect2 = (uint16_t *) pVect2v + qty8;
-
-        size_t qty_left = qty - qty8;
-        float res_tail = L2SqrF16(pVect1, pVect2, &qty_left);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty8 = qty >> 3 << 3;
+        const auto res = L2SqrSIMD8ExtF16(pVect1v, pVect2v, &qty8);
+        const auto pVect1 = static_cast<const uint16_t *>(pVect1v) + qty8;
+        const auto pVect2 = static_cast<const uint16_t *>(pVect2v) + qty8;
+        const auto qty_left = qty - qty8;
+        const auto res_tail = L2SqrF16(pVect1, pVect2, &qty_left);
         return (res + res_tail);
     }
 #endif
@@ -113,12 +112,12 @@ namespace hnswlib {
 #ifdef USE_SSE
     static float
     L2SqrSIMD4ExtF16(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        uint16_t *pVect1 = (uint16_t *) pVect1v;
-        uint16_t *pVect2 = (uint16_t *) pVect2v;
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty4 = qty >> 2;
+        auto pVect1 = static_cast<const uint16_t*>(pVect1v);
+        auto pVect2 = static_cast<const uint16_t*>(pVect2v);
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty4 = qty >> 2;
 
-        const uint16_t *pEnd1 = pVect1 + (qty4 << 2);
+        const auto pEnd1 = pVect1 + (qty4 << 2);
 
         __m128i v1f16, v2f16;
         __m128 diff, v1, v2;
@@ -141,15 +140,14 @@ namespace hnswlib {
 
     static float
     L2SqrSIMD4ExtF16Residuals(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
-        size_t qty = *((size_t *) qty_ptr);
-        size_t qty4 = qty >> 2 << 2;
+        const auto qty = *static_cast<const size_t*>(qty_ptr);
+        const auto qty4 = qty >> 2 << 2;
 
-        float res = L2SqrSIMD4ExtF16(pVect1v, pVect2v, &qty4);
-        size_t qty_left = qty - qty4;
-
-        uint16_t *pVect1 = (uint16_t *) pVect1v + qty4;
-        uint16_t *pVect2 = (uint16_t *) pVect2v + qty4;
-        float res_tail = L2SqrF16(pVect1, pVect2, &qty_left);
+        const auto res = L2SqrSIMD4ExtF16(pVect1v, pVect2v, &qty4);
+        const auto qty_left = qty - qty4;
+        const auto pVect1 = static_cast<const uint16_t *>(pVect1v) + qty4;
+        const auto pVect2 = static_cast<const uint16_t *>(pVect2v) + qty4;
+        const auto res_tail = L2SqrF16(pVect1, pVect2, &qty_left);
 
         return (res + res_tail);
     }
@@ -158,10 +156,12 @@ namespace hnswlib {
     class L2SpaceF16 : public SpaceInterface<float> {
 
         DISTFUNC<float> fstdistfunc_;
-        size_t data_size_;
+        const size_t data_size_;
         size_t dim_;
     public:
-        L2SpaceF16(size_t dim) {
+        L2SpaceF16(size_t dim)
+        : data_size_(dim * sizeof(uint16_t))
+        , dim_(dim) {
             fstdistfunc_ = L2SqrF16;
         #if defined(USE_SSE) || defined(USE_AVX)
             if (dim % 8 == 0)
@@ -173,9 +173,6 @@ namespace hnswlib {
             else if (dim > 4)
                 fstdistfunc_ = L2SqrSIMD4ExtF16Residuals;
         #endif
-
-            dim_ = dim;
-            data_size_ = dim * sizeof(uint16_t);
         }
 
         size_t get_data_size() {

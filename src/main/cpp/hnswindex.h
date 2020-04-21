@@ -132,11 +132,11 @@ public:
     }
 
     inline void decodeFloat16(const uint16_t* src, float* dst) {
-        decode_func_float16(src, dst, dist_func_param_);
+        decode_func_float16(src, dst, static_cast<const size_t*>(dist_func_param_));
     }
 
     inline void encodeFloat16(const float* src, uint16_t* dst) {
-        encode_func_float16(src, dst, dist_func_param_);
+        encode_func_float16(src, dst, static_cast<const size_t*>(dist_func_param_));
     }
 
     std::vector<size_t> getLabels() {
