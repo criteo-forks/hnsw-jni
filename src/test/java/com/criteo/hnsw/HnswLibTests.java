@@ -20,7 +20,7 @@ public class HnswLibTests {
 
     private float seedValue = 1;
     private int dimension = 100;
-    private Function<Integer, Float> getValueById = (id) -> id == 0? 0 : seedValue / id;
+    private Function<Integer, Float> getValueById = (id) -> id == 0 ? 0 : seedValue / id;
     private Function<Integer, Float> getValueByIdFromOne = (id) ->  seedValue / (id + seedValue);
     private Function<Integer, Float> getRandomValueById = (id) -> rand.nextFloat();
     private Function<Integer, Float> getNormalizedValueById = i -> i == 0 ? 0.0f : 1 / (float) Math.sqrt(dimension);
