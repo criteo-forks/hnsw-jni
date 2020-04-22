@@ -55,7 +55,9 @@ public class HnswLib {
 
     public static native int search(long pointer, FloatBuffer query_buffer, long k, LongBuffer items_result_buffer, FloatBuffer distance_result_buffer, ByteBuffer[] result_vectors);
 
-    public static native boolean decodeItem(long pointer, ByteBuffer src, ByteBuffer dst);
+    public static native boolean decodeFloat16(long pointer, ByteBuffer src, ByteBuffer dst);
+
+    public static native boolean encodeFloat16(long pointer, ByteBuffer src, ByteBuffer dst);
 
     public static native float getDistanceBetweenLabels(long index, long label1, long label2);
 

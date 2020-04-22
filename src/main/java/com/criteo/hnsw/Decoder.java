@@ -1,9 +1,13 @@
 package com.criteo.hnsw;
 
+import java.nio.ByteBuffer;
+
 public class Decoder {
     private long pointer;
     private int dimension;
     private String precision;
+
+    private static final int FLOAT_16_SIZE_IN_BYTES = 2;
 
     private ThreadLocal<FloatByteBuf> decodedEmbedding = new ThreadLocal<FloatByteBuf>(){
         @Override protected FloatByteBuf initialValue() {
@@ -35,8 +39,17 @@ public class Decoder {
     public FloatByteBuf decode(FloatByteBuf src) {
         if (precision.equals(Precision.Float16)) {
             FloatByteBuf decoded = decodedEmbedding.get();
-            HnswLib.decodeItem(pointer, src.getNioBuffer(), decoded.getNioBuffer());
+            HnswLib.decodeFloat16(pointer, src.getNioBuffer(), decoded.getNioBuffer());
             return decoded;
+        }
+        return src;
+    }
+
+    public ByteBuffer encode(ByteBuffer src) {
+        if (precision.equals(Precision.Float16)) {
+            ByteBuffer dst = ByteBuffer.allocateDirect(dimension * FLOAT_16_SIZE_IN_BYTES);
+            HnswLib.encodeFloat16(pointer, src, dst);
+            return dst;
         }
         return src;
     }
