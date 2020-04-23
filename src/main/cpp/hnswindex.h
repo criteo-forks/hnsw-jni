@@ -50,10 +50,9 @@ public:
         data_size = space->get_data_size();
         fstdistfunc_ = space->get_dist_func();
         dist_func_param_ = space->get_dist_func_param();
-        decoder_float16 = new hnswlib::DecoderFloat16(dim);
-        decode_func_float16 = decoder_float16->get_decode_func();
-        encode_func_float16 = decoder_float16->get_encode_func();
-        appr_alg = NULL;
+        decode_func_float16 = hnswlib::get_fast_float16_decode_func(dim);
+        encode_func_float16 = hnswlib::get_fast_float16_encode_func(dim);
+        appr_alg = nullptr;
     }
 
     void initNewIndex(const size_t maxElements, const size_t M, const size_t efConstruction, const size_t random_seed) {
@@ -132,11 +131,11 @@ public:
     }
 
     inline void decodeFloat16(const uint16_t* src, float* dst) {
-        decode_func_float16(src, dst, static_cast<const size_t*>(dist_func_param_));
+        decode_func_float16(src, dst, dim);
     }
 
     inline void encodeFloat16(const float* src, uint16_t* dst) {
-        encode_func_float16(src, dst, static_cast<const size_t*>(dist_func_param_));
+        encode_func_float16(src, dst, dim);
     }
 
     std::vector<size_t> getLabels() {
@@ -197,13 +196,12 @@ public:
     }
 
     hnswlib::SpaceInterface<float> *space;
-    int dim;
-    int data_size;
+    const size_t dim;
+    size_t data_size;
     bool normalize = false;
-    hnswlib::DecoderFloat16 * decoder_float16;
-    hnswlib::ENCODEFUNC<dist_t, uint16_t> encode_func_float16;
-    hnswlib::DECODEFUNC<dist_t, uint16_t> decode_func_float16;
-    Precision precision = Float32;
+    hnswlib::DECODEFUNC<dist_t, uint16_t> encode_func_float16;
+    hnswlib::DECODEFUNC<uint16_t, dist_t> decode_func_float16;
+    const Precision precision;
     hnswlib::AlgorithmInterface<dist_t> * appr_alg;
     hnswlib::DISTFUNC <dist_t> fstdistfunc_;
     std::unordered_map<hnswlib::labeltype, hnswlib::tableint> * label_lookup_;
@@ -211,7 +209,6 @@ public:
 
     ~Index() {
         delete space;
-        delete decoder_float16;
         if (appr_alg)
             delete appr_alg;
     }
