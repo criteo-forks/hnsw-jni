@@ -102,6 +102,12 @@ JNIEXPORT jfloat JNICALL Java_com_criteo_hnsw_HnswLib_getDistanceBetweenVectors(
 
 JNIEXPORT jlongArray JNICALL Java_com_criteo_hnsw_HnswLib_getLabels(JNIEnv *env, jclass jobj, jlong pointer);
 
+JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_getPrecision(JNIEnv *env, jclass jobj, jlong pointer);
+
+JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_getDimension(JNIEnv *env, jclass jobj, jlong pointer);
+
+JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_getMetric(JNIEnv *env, jclass jobj, jlong pointer);
+
 #ifdef __cplusplus
 }
 #endif

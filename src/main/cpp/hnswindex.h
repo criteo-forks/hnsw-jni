@@ -23,7 +23,7 @@ template<typename dist_t, typename data_t=float>
 class Index {
 public:
     Index(Distance distance, const int dim, const Precision precision = Float32) :
-        dim(dim), precision(precision) {
+        dim(dim), precision(precision), distance(distance) {
         switch (distance) {
             case Euclidean:
                 if(precision == Float16)
@@ -77,7 +77,14 @@ public:
     }
 
     void loadIndex(const std::string &path_to_index) {
-        setAlgorithm(new hnswlib::HierarchicalNSW<dist_t>(space, path_to_index));
+        hnswlib::HierarchicalNSW<dist_t> * algo;
+        if (precision == Float16) {
+            algo = new hnswlib::HierarchicalNSW<dist_t>(space);
+            algo->template loadAndDecode<float, uint16_t>(path_to_index, space, encode_func_float16);
+        } else {
+            algo = new hnswlib::HierarchicalNSW<dist_t>(space, path_to_index);
+        }
+        setAlgorithm(algo);
     }
 
     void loadBruteforce(const std::string &path_to_index) {
@@ -202,6 +209,7 @@ public:
     hnswlib::DECODEFUNC<dist_t, uint16_t> encode_func_float16;
     hnswlib::DECODEFUNC<uint16_t, dist_t> decode_func_float16;
     const Precision precision;
+    const Distance distance;
     hnswlib::AlgorithmInterface<dist_t> * appr_alg;
     hnswlib::DISTFUNC <dist_t> fstdistfunc_;
     std::unordered_map<hnswlib::labeltype, hnswlib::tableint> * label_lookup_;

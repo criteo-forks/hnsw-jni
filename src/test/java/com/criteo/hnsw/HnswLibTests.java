@@ -33,11 +33,57 @@ public class HnswLibTests {
     @Test
     public void create_indices_save_and_load() throws IOException {
         Map<HnswIndex, Function<Integer, Float>> indices = new HashMap<HnswIndex, Function<Integer, Float>>() {{
-            // Hnsw
+            // Hnsw - float32
             put(HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, false), getValueById);
             put(HnswIndex.create(Metrics.DotProduct, dimension, Precision.Float32, false), getValueById);
             put(HnswIndex.create(Metrics.Angular, dimension, Precision.Float32, false), getNormalizedValueById);
-            // Bruteforce
+            // Hnsw - float16
+            put(HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float16, false), getValueById);
+            put(HnswIndex.create(Metrics.DotProduct, dimension, Precision.Float16, false), getValueById);
+            put(HnswIndex.create(Metrics.Angular, dimension, Precision.Float16, false), getNormalizedValueById);
+        }};
+        File dir = Files.createTempDirectory("HnswLib").toFile();
+        String indexPathStr = new File(dir, "index.hnsw").toString();
+
+        long nbItems = 123;
+
+        double epsilon16 = 1E-3;
+        double epsilon32 = delta;
+
+        for (Map.Entry<HnswIndex, Function<Integer, Float>> entry : indices.entrySet()) {
+            HnswIndex index = entry.getKey();
+            Function<Integer, Float> getValueById = entry.getValue();
+            index.initNewIndex(nbItems, M, efConstruction, randomSeed);
+            assertEquals(0, index.getNbItems());
+            populateIndex(index, getValueById, nbItems, dimension);
+
+            assertEquals(nbItems, index.getNbItems());
+
+            double epsilon = epsilon32;
+            Decoder decoder = decoderFloat32;
+            if (index.getPrecision() == Precision.Float16Val) {
+                epsilon = epsilon16;
+                decoder = decoderFloat16;
+            }
+            assertAllVectorsMatchExpected(index, dimension, getValueById, decoder, epsilon);
+            index.save(indexPathStr);
+
+            index.load(indexPathStr);
+            assertAllVectorsMatchExpected(index, dimension, getValueById, decoder, epsilon);
+
+            // Create float16 Index from either float32 or from float16 format
+            HnswIndex index16 = HnswIndex.create(index.getMetric(), dimension, Precision.Float16Val, index.isBruteforce());
+            index16.load(indexPathStr);
+            assertAllVectorsMatchExpected(index16, dimension, getValueById, decoderFloat16, epsilon16);
+
+            index16.unload();
+            index.unload();
+        }
+    }
+
+    @Test
+    public void create_bruteforce_indices_save_and_load() throws IOException {
+        Map<HnswIndex, Function<Integer, Float>> indices = new HashMap<HnswIndex, Function<Integer, Float>>() {{
             put(HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, true), getValueById);
             put(HnswIndex.create(Metrics.DotProduct, dimension, Precision.Float32, true), getValueById);
             put(HnswIndex.create(Metrics.Angular, dimension, Precision.Float32, true), getNormalizedValueById);
@@ -50,11 +96,7 @@ public class HnswLibTests {
         for (Map.Entry<HnswIndex, Function<Integer, Float>> entry : indices.entrySet()) {
             HnswIndex index = entry.getKey();
             Function<Integer, Float> getValueById = entry.getValue();
-            if (index.isBruteforce()) {
-                index.initBruteforce(nbItems);
-            } else {
-                index.initNewIndex(nbItems, M, efConstruction, randomSeed);
-            }
+            index.initBruteforce(nbItems);
             assertEquals(0, index.getNbItems());
             populateIndex(index, getValueById, nbItems, dimension);
 
@@ -69,38 +111,6 @@ public class HnswLibTests {
             index.unload();
         }
     }
-
-
-    @Test
-    public void create_indices_save_and_load_float16() throws IOException {
-        Map<HnswIndex, Function<Integer, Float>> indices = new HashMap<HnswIndex, Function<Integer, Float>>() {{
-            put(HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float16), getValueById);
-        }};
-        File dir = Files.createTempDirectory("HnswLib").toFile();
-        String indexPathStr = new File(dir, "index.hnsw").toString();
-
-        long nbItems = 123;
-        double epsilon = 1E-3;
-        for (Map.Entry<HnswIndex, Function<Integer, Float>> entry : indices.entrySet()) {
-            HnswIndex index = entry.getKey();
-            Function<Integer, Float> getValueById = entry.getValue();
-
-            index.initNewIndex(nbItems, M, efConstruction, randomSeed);
-            assertEquals(0, index.getNbItems());
-            populateIndex(index, getValueById, nbItems, dimension);
-
-            assertEquals(nbItems, index.getNbItems());
-
-            assertAllVectorsMatchExpected(index, dimension, getValueById, decoderFloat16, epsilon);
-            index.save(indexPathStr);
-
-            index.load(indexPathStr);
-            assertAllVectorsMatchExpected(index, dimension, getValueById, decoderFloat16, epsilon);
-
-            index.unload();
-        }
-    }
-
 
     @Test
     public void check_Euclidean_index_computes_distance_correctly_simple_embeddings() {

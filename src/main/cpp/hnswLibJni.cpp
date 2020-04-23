@@ -146,6 +146,18 @@ JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass j
     return result_count;
 }
 
+JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_getPrecision(JNIEnv *env, jclass jobj, jlong pointer) {
+    return (jint)((Index<float> *)pointer)->precision;
+}
+
+JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_getDimension(JNIEnv *env, jclass jobj, jlong pointer) {
+    return (jint)((Index<float> *)pointer)->dim;
+}
+
+JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_getMetric(JNIEnv *env, jclass jobj, jlong pointer) {
+    return (jint)((Index<float> *)pointer)->distance;
+}
+
 JNIEXPORT jfloat JNICALL Java_com_criteo_hnsw_HnswLib_getDistanceBetweenLabels(JNIEnv *env, jclass jobj, jlong pointer, jlong label1, jlong label2) {
     return ((Index<float> *)pointer)->getDistanceBetweenLabels(label1, label2);
 }

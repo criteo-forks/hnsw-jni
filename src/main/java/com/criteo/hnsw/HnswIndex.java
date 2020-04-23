@@ -4,8 +4,6 @@ import java.nio.ByteBuffer;
 
 public class HnswIndex {
     private long pointer;
-    private int dimension;
-    private String precision;
     private Boolean isBruteforce;
 
     public static HnswIndex create(String metric, int dimension) {
@@ -19,14 +17,15 @@ public class HnswIndex {
     public static HnswIndex create(String metric, int dimension, String precision, Boolean isBruteforce) {
         int metricVal = Metrics.getVal(metric);
         int precisionVal = Precision.getVal(precision);
-        long pointer = HnswLib.create(dimension, metricVal, precisionVal);
-        return new HnswIndex(pointer, dimension, precision, isBruteforce);
+        return create(metricVal, dimension, precisionVal, isBruteforce);
     }
 
-    public HnswIndex(long pointer, int dimension, String precision, Boolean isBruteforce) {
+    public static HnswIndex create(int metricVal, int dimension, int precisionVal, Boolean isBruteforce) {
+        long pointer = HnswLib.create(dimension, metricVal, precisionVal);
+        return new HnswIndex(pointer, isBruteforce);
+    }
+    public HnswIndex(long pointer, Boolean isBruteforce) {
         this.pointer = pointer;
-        this.dimension = dimension;
-        this.precision = precision;
         this.isBruteforce = isBruteforce;
     }
 
@@ -34,16 +33,20 @@ public class HnswIndex {
         return pointer;
     }
 
+    public int getMetric() {
+        return HnswLib.getMetric(pointer);
+    }
+
     public Boolean isBruteforce() {
         return isBruteforce;
     }
 
     public int getDimension() {
-        return dimension;
+        return HnswLib.getDimension(pointer);
     }
 
-    public String getPrecision() {
-        return precision;
+    public int getPrecision() {
+        return HnswLib.getPrecision(pointer);
     }
 
     public long load(String path) {

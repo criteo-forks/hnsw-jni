@@ -25,7 +25,6 @@ public class HnswLib {
                 throw new NotImplementedException("OS is not compatible");
             }
             System.out.println("Load HNSWLIB_JNI success");
-            return;
         } catch (IOException e2) {
             throw new RuntimeException(e2);
         }
@@ -64,4 +63,10 @@ public class HnswLib {
     public static native float getDistanceBetweenVectors(long index, FloatBuffer vector1, FloatBuffer vector2);
 
     public static native long[] getLabels(long index);
+
+    public static native int getPrecision(long index);
+
+    public static native int getMetric(long index);
+
+    public static native int getDimension(long index);
 }
