@@ -53,6 +53,7 @@ public:
         decode_func_float16 = hnswlib::get_fast_float16_decode_func(dim);
         encode_func_float16 = hnswlib::get_fast_float16_encode_func(dim);
         appr_alg = nullptr;
+        brute_alg = nullptr;
     }
 
     void initNewIndex(const size_t maxElements, const size_t M, const size_t efConstruction, const size_t random_seed) {
@@ -107,19 +108,9 @@ public:
     }
 
     void addItem(dist_t* vector, size_t id) {
-        void* vector_data = vector;
         std::vector<dist_t> norm_array;
-        if(normalize) {
-            norm_array.reserve(dim);
-            normalizeVector((dist_t*)vector_data, norm_array.data());
-            vector_data = norm_array.data();
-        }
         std::vector<uint16_t> encoded_float16_vector;
-        if (precision == Float16) {
-            encoded_float16_vector.reserve(dim);
-            encodeFloat16((dist_t*)vector_data, encoded_float16_vector.data());
-            vector_data = encoded_float16_vector.data();
-        }
+        void* vector_data = processItem(vector, norm_array, encoded_float16_vector);
         appr_alg->addPoint(vector_data, (size_t) id);
     }
 
@@ -153,6 +144,21 @@ public:
         return labels;
     }
 
+    void* processItem(dist_t* item, std::vector<dist_t>& norm_array, std::vector<uint16_t>& encoded_float16_vector) {
+        void* data = item;
+        if(normalize) {
+            norm_array.resize(dim);
+            normalizeVector(static_cast<dist_t*>(data), norm_array.data());
+            data = norm_array.data();
+        }
+        if (precision == Float16) {
+            encoded_float16_vector.resize(dim);
+            encodeFloat16(static_cast<dist_t*>(data), encoded_float16_vector.data());
+            data = encoded_float16_vector.data();
+        }
+        return data;
+    }
+
     /**
      * `knnQuery` - runs knn search on the query vector and returns k closest neighbours with
      * distance from query and pointer to each result
@@ -165,30 +171,43 @@ public:
      *
      * Returns: number of neighbours returned (<= k)
      **/
-    size_t knnQuery(dist_t * query, size_t * result_labels, dist_t * result_distances, data_t** results_pointers, size_t k) {
-        void* query_data = query;
+    size_t knnQuery(dist_t* query, size_t* result_labels, dist_t* result_distances, data_t** results_pointers, size_t k) {
         std::vector<dist_t> norm_array;
-        if(normalize) {
-            norm_array.reserve(dim);
-            normalizeVector((dist_t*)query_data, norm_array.data());
-            query_data = norm_array.data();
-        }
         std::vector<uint16_t> encoded_float16_vector;
-        if (precision == Float16) {
-            encoded_float16_vector.reserve(dim);
-            // TODO: Add asymmetric distance computation to avoid f32->f16->f32*n conversions for query vector
-            encodeFloat16((dist_t*)query_data, encoded_float16_vector.data());
-            query_data = encoded_float16_vector.data();
-        }
-        std::priority_queue<std::pair<dist_t, hnswlib::tableint >> result = appr_alg->searchKnn(
-            query_data, k);
-        size_t nbResults = result.size();
+        // TODO: Add asymmetric distance computation to avoid f32->f16->f32*n conversions for query vector
+        const auto query_data = processItem(query, norm_array, encoded_float16_vector);
+
+        auto result = appr_alg->searchKnn(query_data, k);
+        const auto nbResults = result.size();
 
         for (int i = nbResults - 1; i >= 0; i--) {
             auto &result_tuple = result.top();
             result_distances[i] = result_tuple.first;
             result_labels[i] = (size_t)appr_alg->getExternalLabel(result_tuple.second);
             results_pointers[i] = (data_t*)appr_alg->getDataByInternalId(result_tuple.second);
+            result.pop();
+        }
+        return nbResults;
+    }
+
+    /**
+     * Used to compute fast recall/precison of the index which is already loaded in memory
+     * avoiding copying memory into another memory location saving both ram and speed
+     **/
+    size_t knnQueryBruteforce(dist_t * query, size_t * result_labels, size_t k) {
+        std::vector<dist_t> norm_array;
+        std::vector<uint16_t> encoded_float16_vector;
+        const auto query_data = processItem(query, norm_array, encoded_float16_vector);
+        // Lazily create brute algorithms since it's needed only for offline jobs
+        if(brute_alg == nullptr) {
+            brute_alg = new hnswlib::BruteforceSearchAlg<dist_t>(space);
+        }
+        auto result = brute_alg->searchKnn(query_data, k, appr_alg);
+        const auto nbResults = result.size();
+
+        for (int i = nbResults - 1; i >= 0; i--) {
+            auto &result_tuple = result.top();
+            result_labels[i] = (size_t)appr_alg->getExternalLabel(result_tuple.second);
             result.pop();
         }
         return nbResults;
@@ -211,6 +230,7 @@ public:
     const Precision precision;
     const Distance distance;
     hnswlib::AlgorithmInterface<dist_t> * appr_alg;
+    hnswlib::BruteforceSearchAlg<dist_t> * brute_alg;
     hnswlib::DISTFUNC <dist_t> fstdistfunc_;
     std::unordered_map<hnswlib::labeltype, hnswlib::tableint> * label_lookup_;
     void *dist_func_param_;

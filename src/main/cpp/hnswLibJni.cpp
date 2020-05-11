@@ -146,6 +146,14 @@ JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass j
     return result_count;
 }
 
+JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_searchBruteforce(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer) {
+    auto *hnsw = (Index<float> *) pointer;
+    auto *query_buffer_address = static_cast<float *>(env->GetDirectBufferAddress(query_buffer));
+    auto *items_result_address = static_cast<size_t *>(env->GetDirectBufferAddress(items_result_buffer));
+    auto result_count = hnsw->knnQueryBruteforce(query_buffer_address, items_result_address, k);
+    return result_count;
+}
+
 JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_getPrecision(JNIEnv *env, jclass jobj, jlong pointer) {
     return (jint)((Index<float> *)pointer)->precision;
 }

@@ -127,6 +127,20 @@ public class HnswIndex {
         }
     }
 
+    public long[] searchBruteforce(FloatByteBuf query, int k) throws Exception {
+        try(LongByteBuf result_item = new LongByteBuf(k)) {
+            int resultCount = HnswLib.searchBruteforce(pointer, query.asFloatBuffer(), k, result_item.asLongBuffer());
+            result_item.writerIndex(resultCount);
+            long[] resultItems = new long[resultCount];
+
+            for (int i = 0; i < resultCount; i++) {
+                resultItems[i] = result_item.read();
+            }
+
+            return resultItems;
+        }
+    }
+
     public float getDistance(FloatByteBuf vector1, FloatByteBuf vector2) {
         return HnswLib.getDistanceBetweenVectors(pointer, vector1.asFloatBuffer(), vector2.asFloatBuffer());
     }

@@ -166,8 +166,8 @@ public class HnswLibTests {
     public void check_Euclidean_index_returns_correct_neighbours() throws Exception {
         int k = (int) nbItems;
         HnswIndex[] indices = new HnswIndex[]{
-                HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, false),
-                HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, true),
+            HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, false),
+            HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, true),
         };
 
         for (HnswIndex index : indices) {
@@ -194,6 +194,33 @@ public class HnswLibTests {
                 assertEquals(k - i, found);
                 assertEquals(dimension * (float) Math.pow(getValueById.apply(k - i), 2), distance, delta);
                 assertAllEqual(index.getItem(found), results.resultVectors[i], dimension);
+            }
+
+            index.unload();
+        }
+    }
+
+    @Test
+    public void check_Euclidean_bruteforce_search_returns_correct_neighbours() throws Exception {
+        int k = (int) nbItems;
+        HnswIndex[] indices = new HnswIndex[]{
+            HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, false),
+        };
+
+        for (HnswIndex index : indices) {
+            index.initNewIndex(nbItems, M, efConstruction, randomSeed);
+            populateIndex(index, getValueById, nbItems, dimension);
+
+            FloatByteBuf query = index.getItem(0);
+            long[] results = index.searchBruteforce(query, k);
+            assertEquals(k, results.length);
+
+            // 1st result should be self
+            assertEquals(0, results[0]);
+
+            for (int i = 1; i < k; i++) {
+                long found = results[i];
+                assertEquals(k - i, found);
             }
 
             index.unload();
@@ -231,25 +258,33 @@ public class HnswLibTests {
     @Test
     public void check_no_error_happens_if_less_items_is_returned_than_k() throws Exception {
         int biggerK = (int) nbItems * 2;
+        HnswIndex[] indices = new HnswIndex[]{
+            HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, false),
+            HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, true),
+        };
+        for (HnswIndex index : indices) {
 
-        HnswIndex index = HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32);
+            if (index.isBruteforce()) {
+                index.initBruteforce(nbItems);
+            } else {
+                index.initNewIndex(nbItems, M, efConstruction, randomSeed);
+            }
+            populateIndex(index, getValueById, nbItems, dimension);
 
-        index.initNewIndex(nbItems, M, efConstruction, randomSeed);
-        populateIndex(index, getValueById, nbItems, dimension);
+            FloatByteBuf query = index.getItem(0);
+            KnnResult results = index.search(query, biggerK);
+            assertEquals(nbItems, results.resultCount);
 
-        FloatByteBuf query = index.getItem(0);
-        KnnResult results = index.search(query, biggerK);
-        assertEquals(nbItems, results.resultCount);
+            for (int i = 1; i < nbItems; i++) {
+                long found = results.resultItems[i];
+                float distance = results.resultDistances[i];
+                assertEquals(nbItems - i, found);
+                assertEquals(dimension * (float) Math.pow(getValueById.apply((int) nbItems - i), 2), distance, delta);
+                assertAllEqual(index.getItem(found), results.resultVectors[i], dimension);
+            }
 
-        for (int i = 1; i < nbItems; i++) {
-            long found = results.resultItems[i];
-            float distance = results.resultDistances[i];
-            assertEquals(nbItems - i, found);
-            assertEquals(dimension * (float) Math.pow(getValueById.apply((int) nbItems - i), 2), distance, delta);
-            assertAllEqual(index.getItem(found), results.resultVectors[i], dimension);
+            index.unload();
         }
-
-        index.unload();
     }
 
 
