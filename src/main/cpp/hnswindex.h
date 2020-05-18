@@ -64,6 +64,10 @@ public:
         setAlgorithm(new hnswlib::BruteforceSearch<dist_t>(space, maxElements));
     }
 
+    void enableBruteforceSearch() {
+        brute_alg = new hnswlib::BruteforceSearchAlg<dist_t>(space);
+    }
+
     void setAlgorithm(hnswlib::AlgorithmInterface<dist_t> * algo) {
         if (appr_alg) {
             std::cerr<<"Warning: Setting index for an already inited index. Old index is being deallocated.\n";
@@ -161,7 +165,10 @@ public:
 
     /**
      * `knnQuery` - runs knn search on the query vector and returns k closest neighbours with
-     * distance from query and pointer to each result
+     * distance from query and pointer to each result.
+     *
+     * `bruteforce_search` = true is use to compute fast recall/precison of the index which is
+     * already loaded in memory avoiding double vectors footprint on memory and improving speed.
      *
      *  * `query` - query vector (float[dim]) in the index space
      *  * `result_labels` (out) - array of labels of nearest neighbours (size_t[k])
@@ -171,13 +178,19 @@ public:
      *
      * Returns: number of neighbours returned (<= k)
      **/
+    template<bool bruteforce_search=false>
     size_t knnQuery(dist_t* query, size_t* result_labels, dist_t* result_distances, data_t** results_pointers, size_t k) {
         std::vector<dist_t> norm_array;
         std::vector<uint16_t> encoded_float16_vector;
         // TODO: Add asymmetric distance computation to avoid f32->f16->f32*n conversions for query vector
         const auto query_data = processItem(query, norm_array, encoded_float16_vector);
 
-        auto result = appr_alg->searchKnn(query_data, k);
+        std::priority_queue<std::pair<dist_t, hnswlib::tableint >> result;
+        if(!bruteforce_search) {
+            result = appr_alg->searchKnn(query_data, k);
+        } else {
+            result = brute_alg->searchKnn(query_data, k, appr_alg);
+        }
         const auto nbResults = result.size();
 
         for (int i = nbResults - 1; i >= 0; i--) {
@@ -185,29 +198,6 @@ public:
             result_distances[i] = result_tuple.first;
             result_labels[i] = (size_t)appr_alg->getExternalLabel(result_tuple.second);
             results_pointers[i] = (data_t*)appr_alg->getDataByInternalId(result_tuple.second);
-            result.pop();
-        }
-        return nbResults;
-    }
-
-    /**
-     * Used to compute fast recall/precison of the index which is already loaded in memory
-     * avoiding copying memory into another memory location saving both ram and speed
-     **/
-    size_t knnQueryBruteforce(dist_t * query, size_t * result_labels, size_t k) {
-        std::vector<dist_t> norm_array;
-        std::vector<uint16_t> encoded_float16_vector;
-        const auto query_data = processItem(query, norm_array, encoded_float16_vector);
-        // Lazily create brute algorithms since it's needed only for offline jobs
-        if(brute_alg == nullptr) {
-            brute_alg = new hnswlib::BruteforceSearchAlg<dist_t>(space);
-        }
-        auto result = brute_alg->searchKnn(query_data, k, appr_alg);
-        const auto nbResults = result.size();
-
-        for (int i = nbResults - 1; i >= 0; i--) {
-            auto &result_tuple = result.top();
-            result_labels[i] = (size_t)appr_alg->getExternalLabel(result_tuple.second);
             result.pop();
         }
         return nbResults;
@@ -237,6 +227,8 @@ public:
 
     ~Index() {
         delete space;
+        if (brute_alg)
+            delete brute_alg;
         if (appr_alg)
             delete appr_alg;
     }

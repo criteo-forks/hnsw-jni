@@ -42,6 +42,14 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_initBruteforce
 
 /*
  * Class:     com_criteo_recommendation_knn_HnswLib
+ * Method:    enableBruteforceSearch
+ * Signature: (JJ)V
+ */
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_enableBruteforceSearch
+(JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     com_criteo_recommendation_knn_HnswLib
  * Method:    setEf
  * Signature: (JJ)V
  */
@@ -90,9 +98,7 @@ JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_getNbItems
 
 JNIEXPORT jobject JNICALL Java_com_criteo_hnsw_HnswLib_getItem(JNIEnv *env, jclass jobj, jlong pointer, jlong label);
 
-JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer, jobject distance_result_buffer, jobjectArray result_vectors);
-
-JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_searchBruteforce(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer);
+JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer, jobject distance_result_buffer, jobjectArray result_vectors, jboolean bruteforce_search=false);
 
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_decodeFloat16(JNIEnv *env, jclass jobj, jlong pointer, jobject src_buffer, jobject dst_buffer);
 

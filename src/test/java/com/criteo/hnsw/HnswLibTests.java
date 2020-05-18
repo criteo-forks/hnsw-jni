@@ -209,18 +209,24 @@ public class HnswLibTests {
 
         for (HnswIndex index : indices) {
             index.initNewIndex(nbItems, M, efConstruction, randomSeed);
+            index.enableBruteforceSearch();
             populateIndex(index, getValueById, nbItems, dimension);
 
             FloatByteBuf query = index.getItem(0);
-            long[] results = index.searchBruteforce(query, k);
-            assertEquals(k, results.length);
+            KnnResult results = index.searchBruteforce(query, k);
+            assertEquals(k, results.resultCount);
 
             // 1st result should be self
-            assertEquals(0, results[0]);
+            assertEquals(0, results.resultItems[0]);
+            assertEquals(0, results.resultDistances[0], delta);
 
+            assertAllEqual(query, results.resultVectors[0], dimension);
             for (int i = 1; i < k; i++) {
-                long found = results[i];
+                long found = results.resultItems[i];
+                float distance = results.resultDistances[i];
                 assertEquals(k - i, found);
+                assertEquals(dimension * (float) Math.pow(getValueById.apply(k - i), 2), distance, delta);
+                assertAllEqual(index.getItem(found), results.resultVectors[i], dimension);
             }
 
             index.unload();

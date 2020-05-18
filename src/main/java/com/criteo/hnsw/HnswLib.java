@@ -38,6 +38,8 @@ public class HnswLib {
 
     public static native void initBruteforce(long pointer, long max_elements);
 
+    public static native void enableBruteforceSearch(long pointer);
+
     public static native void setEf(long pointer, long ef_search);
 
     public static native void saveIndex(long pointer, String path);
@@ -52,9 +54,7 @@ public class HnswLib {
 
     public static native ByteBuffer getItem(long pointer, long label);
 
-    public static native int search(long pointer, FloatBuffer query_buffer, long k, LongBuffer items_result_buffer, FloatBuffer distance_result_buffer, ByteBuffer[] result_vectors);
-
-    public static native int searchBruteforce(long pointer, FloatBuffer query_buffer, long k, LongBuffer items_result_buffer);
+    public static native int search(long pointer, FloatBuffer query_buffer, long k, LongBuffer items_result_buffer, FloatBuffer distance_result_buffer, ByteBuffer[] result_vectors, boolean bruteforceSearch);
 
     public static native boolean decodeFloat16(long pointer, ByteBuffer src, ByteBuffer dst);
 

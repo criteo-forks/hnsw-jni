@@ -42,6 +42,16 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_initBruteforce
 
 /*
  * Class:     com_criteo_recommendation_knn_HnswLib
+ * Method:    enableBruteforceSearch
+ * Signature: (JJ)V
+ */
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_enableBruteforceSearch
+(JNIEnv *env, jclass jobj, jlong pointer) {
+    ((Index<float> *)pointer)->enableBruteforceSearch();
+}
+
+/*
+ * Class:     com_criteo_recommendation_knn_HnswLib
  * Method:    setEf
  * Signature: (JJ)V
  */
@@ -132,25 +142,22 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_encodeFloat16(JNIEnv *env, j
     hnsw->encodeFloat16(src, dst);
 }
 
-JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer, jobject distance_result_buffer, jobjectArray result_vectors) {
+JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer, jobject distance_result_buffer, jobjectArray result_vectors, jboolean bruteforce_search) {
     auto *hnsw = (Index<float> *) pointer;
     auto *query_buffer_address = static_cast<float *>(env->GetDirectBufferAddress(query_buffer));
     auto *items_result_address = static_cast<size_t *>(env->GetDirectBufferAddress(items_result_buffer));
     auto *distance_result_address = static_cast<float *>(env->GetDirectBufferAddress(distance_result_buffer));
     std::vector<float*> item_pointers(k);
-    auto result_count = hnsw->knnQuery(query_buffer_address, items_result_address, distance_result_address, item_pointers.data(), k);
+    size_t result_count;
+    if(bruteforce_search) {
+        result_count = hnsw->knnQuery<true>(query_buffer_address, items_result_address, distance_result_address, item_pointers.data(), k);
+    } else {
+        result_count = hnsw->knnQuery<false>(query_buffer_address, items_result_address, distance_result_address, item_pointers.data(), k);
+    }
     for(int i = 0; i < result_count; i++) {
         auto vector_buffer = env->NewDirectByteBuffer(item_pointers[i], hnsw->data_size);
         env->SetObjectArrayElement(result_vectors, (jsize)i, (jobject)vector_buffer);
     }
-    return result_count;
-}
-
-JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_searchBruteforce(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer) {
-    auto *hnsw = (Index<float> *) pointer;
-    auto *query_buffer_address = static_cast<float *>(env->GetDirectBufferAddress(query_buffer));
-    auto *items_result_address = static_cast<size_t *>(env->GetDirectBufferAddress(items_result_buffer));
-    auto result_count = hnsw->knnQueryBruteforce(query_buffer_address, items_result_address, k);
     return result_count;
 }
 

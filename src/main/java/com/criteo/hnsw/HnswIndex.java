@@ -74,6 +74,10 @@ public class HnswIndex {
         HnswLib.initBruteforce(pointer, maxElements);
     }
 
+    public void enableBruteforceSearch() {
+        HnswLib.enableBruteforceSearch(pointer);
+    }
+
     public void setEf(long ef) {
         HnswLib.setEf(pointer, ef);
     }
@@ -99,13 +103,22 @@ public class HnswIndex {
     }
 
     public KnnResult search(FloatByteBuf query, int k) throws Exception {
+        return search(query, k, false);
+    }
+
+    public KnnResult searchBruteforce(FloatByteBuf query, int k) throws Exception {
+        return search(query, k, true);
+    }
+
+    public KnnResult search(FloatByteBuf query, int k, boolean bruteforceSearch) throws Exception {
         try(LongByteBuf result_item = new LongByteBuf(k)) {
             try(FloatByteBuf result_distance = new FloatByteBuf(k)) {
                 ByteBuffer[] result_vectors = new ByteBuffer[k];
                 int resultCount = HnswLib.search(pointer, query.asFloatBuffer(), k,
                         result_item.asLongBuffer(),
                         result_distance.asFloatBuffer(),
-                        result_vectors
+                        result_vectors,
+                        bruteforceSearch
                 );
                 result_item.writerIndex(resultCount);
                 result_distance.writerIndex(resultCount);
@@ -124,20 +137,6 @@ public class HnswIndex {
 
                 return result;
             }
-        }
-    }
-
-    public long[] searchBruteforce(FloatByteBuf query, int k) throws Exception {
-        try(LongByteBuf result_item = new LongByteBuf(k)) {
-            int resultCount = HnswLib.searchBruteforce(pointer, query.asFloatBuffer(), k, result_item.asLongBuffer());
-            result_item.writerIndex(resultCount);
-            long[] resultItems = new long[resultCount];
-
-            for (int i = 0; i < resultCount; i++) {
-                resultItems[i] = result_item.read();
-            }
-
-            return resultItems;
         }
     }
 
