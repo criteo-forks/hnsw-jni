@@ -1,4 +1,7 @@
 import org.apache.tools.ant.taskdefs.condition.Os
+plugins {
+    id "me.champeau.gradle.jmh" version "0.4.8"
+}
 
 description = "Hnswlib JNI bindings"
 
@@ -69,6 +72,8 @@ dependencies {
     api libraries["org.apache.commons:commons-lang3"]
     api libraries["io.netty:netty-buffer"]
     testImplementation libraries["junit:junit"]
+    jmh 'org.openjdk.jmh:jmh-core:0.9'
+    jmh 'org.openjdk.jmh:jmh-generator-annprocess:0.9'
 }
 
 shadowJar {
@@ -76,4 +81,20 @@ shadowJar {
     // There is collision with spark 2.2 netty version
     relocate("io.netty.buffer", "hnsw.io.netty.buffer")
     relocate("io.netty.util", "hnsw.io.netty.util")
+}
+
+jmhRunBytecodeGenerator {
+    // Disable caching for this task
+    outputs.cacheIf { false }
+}
+
+jmh {
+    fork = 1
+    iterations = 5
+    humanOutputFile = project.file("${project.buildDir}/artifacts/human.txt")
+    resultsFile = project.file("${project.buildDir}/artifacts/results.txt")
+    forceGC = true
+    profilers = []
+    jvmArgsAppend = ["-server"]
+    failOnError = true
 }
