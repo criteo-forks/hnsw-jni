@@ -20,7 +20,7 @@ endif()
 
 include_directories(${JNI_INCLUDE_DIRS} src/main/includes src/main/cpp)
 
-set(SOURCE_FILES src/main/cpp/hnswLibJni.cpp)
+set(SOURCE_FILES src/main/cpp/hnswLibJni.cpp src/main/cpp/mathlib_jni.cpp)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY $ENV{CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $ENV{CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 add_library(HNSWLIB_OBJ OBJECT ${SOURCE_FILES})

@@ -13,6 +13,8 @@ public class HnswLib {
         LoadNativeLib();
     }
 
+    public static void ensureLoaded() {}
+
     private static void LoadNativeLib() {
         try {
             if (SystemUtils.IS_OS_LINUX) {
