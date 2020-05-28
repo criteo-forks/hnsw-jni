@@ -22,38 +22,32 @@ enum Precision {
 template<typename dist_t, typename data_t=float>
 class Index {
 public:
-    Index(Distance distance, const int dim, const Precision precision = Float32) :
+    Index(Distance distance, const int dim, const Precision precision) :
         dim(dim), precision(precision), distance(distance) {
         switch (distance) {
             case Euclidean:
-                if(precision == Float16)
+                if (precision == Float16)
                      space = new hnswlib::L2SpaceF16(dim);
                 else space = new hnswlib::L2Space(dim);
                 break;
             case Angular:
             case InnerProduct:
-                if(precision == Float16)
+                if (precision == Float16)
                      space = new hnswlib::InnerProductSpaceF16(dim);
                 else space = new hnswlib::InnerProductSpace(dim);
-                normalize = distance == Angular;
                 break;
             case Kendall:
                 space = new hnswlib::KendallSpace(dim);
                 if (precision != Float32) {
-                    std::cerr<<"Warning: Kendal distance does not support other precisoin than float32\n";
+                    std::cerr<<"Warning: Kendal distance does not support other precision than float32\n";
                 }
                 break;
             default:
                 throw std::runtime_error("Distance not supported: " + std::to_string(distance));
-                break;
         }
-        data_size = space->get_data_size();
-        fstdistfunc_ = space->get_dist_func();
-        dist_func_param_ = space->get_dist_func_param();
+        normalize = distance == Angular;
         decode_func_float16 = hnswlib::get_fast_float16_decode_func(dim);
         encode_func_float16 = hnswlib::get_fast_float16_encode_func(dim);
-        appr_alg = nullptr;
-        brute_alg = nullptr;
     }
 
     void initNewIndex(const size_t maxElements, const size_t M, const size_t efConstruction, const size_t random_seed) {
@@ -142,8 +136,8 @@ public:
 
     std::vector<size_t> getLabels() {
         std::vector<size_t> labels;
-        for(auto iter = label_lookup_->begin(); iter != label_lookup_->end(); iter++) {
-            labels.push_back(iter->first);
+        for(auto & iter : *label_lookup_) {
+            labels.push_back(iter.first);
         }
         return labels;
     }
@@ -208,22 +202,20 @@ public:
     }
 
     dist_t getDistanceBetweenVectors(void* vector1, void* vector2) {
-        return fstdistfunc_(vector1, vector2, dist_func_param_);
+        const auto func = space->get_dist_func();
+        return func(vector1, vector2, &dim);
     }
 
-    hnswlib::SpaceInterface<float> *space;
+    hnswlib::SpaceInterface<float>* space;
     const size_t dim;
-    size_t data_size;
     bool normalize = false;
     hnswlib::DECODEFUNC<dist_t, uint16_t> encode_func_float16;
     hnswlib::DECODEFUNC<uint16_t, dist_t> decode_func_float16;
     const Precision precision;
     const Distance distance;
-    hnswlib::AlgorithmInterface<dist_t> * appr_alg;
-    hnswlib::BruteforceSearchAlg<dist_t> * brute_alg;
-    hnswlib::DISTFUNC <dist_t> fstdistfunc_;
-    std::unordered_map<hnswlib::labeltype, hnswlib::tableint> * label_lookup_;
-    void *dist_func_param_;
+    hnswlib::AlgorithmInterface<dist_t> * appr_alg = nullptr;
+    hnswlib::BruteforceSearchAlg<dist_t> * brute_alg = nullptr;
+    std::unordered_map<hnswlib::labeltype, hnswlib::tableint> * label_lookup_ = nullptr;
 
     ~Index() {
         delete space;

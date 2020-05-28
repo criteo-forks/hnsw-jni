@@ -1,104 +1,56 @@
-#include "hnswLibJni.h"
+#include <jni.h>
 #include "hnswindex.h"
 #include "hnswlib.h"
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    create
- * Signature: (I)J
- */
+extern "C" {
+
 JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_create(JNIEnv *env, jclass jobj, jint dim, jint distance, jint precision) {
     return (jlong)new Index<float>((Distance)distance, dim, (Precision)precision);
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    destroy
- * Signature: (J)V
- */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_destroy(JNIEnv *env, jclass jobj, jlong pointer) {
     delete ((Index<float> *)pointer);
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    initNewIndex
- * Signature: (JJJJJ)V
- */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_initNewIndex
 (JNIEnv *env, jclass jobj, jlong pointer, jlong max_elements, jlong M, jlong ef_construction, jlong random_seed) {
     ((Index<float> *)pointer)->initNewIndex((size_t)max_elements, (size_t) M, (size_t) ef_construction, (size_t) random_seed);
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    initBruteforce
- * Signature: (JJ)V
- */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_initBruteforce
 (JNIEnv *env, jclass jobj, jlong pointer, jlong max_elements) {
     ((Index<float> *)pointer)->initBruteforce((size_t)max_elements);
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    enableBruteforceSearch
- * Signature: (JJ)V
- */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_enableBruteforceSearch
 (JNIEnv *env, jclass jobj, jlong pointer) {
     ((Index<float> *)pointer)->enableBruteforceSearch();
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    setEf
- * Signature: (JJ)V
- */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_setEf(JNIEnv *env, jclass jobj, jlong pointer, jlong ef) {
     auto index = (Index<float> *)pointer;
     auto hnsw = (hnswlib::HierarchicalNSW<float> *)index->appr_alg;
     hnsw->ef_ = (size_t) ef;
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    saveIndex
- * Signature: (JLjava/lang/String;)V
- */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_saveIndex(JNIEnv *env, jclass jobj, jlong pointer, jstring path) {
     const char *path_to_index = env->GetStringUTFChars(path, NULL);
     ((Index<float> *)pointer)->saveIndex(path_to_index);
     env->ReleaseStringUTFChars(path, path_to_index);
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    loadIndex
- * Signature: (JLjava/lang/String;)V
- */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_loadIndex(JNIEnv *env, jclass jobj, jlong pointer, jstring path) {
     const char *path_to_index = env->GetStringUTFChars(path, NULL);
     ((Index<float> *)pointer)->loadIndex(path_to_index);
     env->ReleaseStringUTFChars(path, path_to_index);
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    loadBruteforce
- * Signature: (JLjava/lang/String;)V
- */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_loadBruteforce(JNIEnv *env, jclass jobj, jlong pointer, jstring path) {
     const char *path_to_index = env->GetStringUTFChars(path, NULL);
     ((Index<float> *)pointer)->loadBruteforce(path_to_index);
     env->ReleaseStringUTFChars(path, path_to_index);
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    addItem
- * Signature: (J[FJ)V
- */
 JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_addItem(JNIEnv *env, jclass jobj, jlong pointer, jfloatArray vector, jlong label) {
     auto hnsw = (Index<float> *)pointer;
     auto dim = hnsw->dim;
@@ -108,11 +60,6 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_addItem(JNIEnv *env, jclass 
     hnsw->addItem(elements_data, (size_t) label);
 }
 
-/*
- * Class:     com_criteo_recommendation_knn_HnswLib
- * Method:    getNbItems
- * Signature: (J)J
- */
 JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_getNbItems(JNIEnv *env, jclass jobj, jlong pointer) {
     return ((Index<float> *)pointer)->getNbItems();
 }
@@ -123,7 +70,7 @@ JNIEXPORT jobject JNICALL Java_com_criteo_hnsw_HnswLib_getItem(JNIEnv *env, jcla
     if (data_ptr == nullptr) {
         return nullptr;
     } else {
-        auto buffer = env->NewDirectByteBuffer(data_ptr, hnsw->data_size);
+        auto buffer = env->NewDirectByteBuffer(data_ptr, hnsw->space->get_data_size());
         return buffer;
     }
 }
@@ -154,8 +101,9 @@ JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass j
     } else {
         result_count = hnsw->knnQuery<false>(query_buffer_address, items_result_address, distance_result_address, item_pointers.data(), k);
     }
+    const auto data_size = hnsw->space->get_data_size();
     for(int i = 0; i < result_count; i++) {
-        auto vector_buffer = env->NewDirectByteBuffer(item_pointers[i], hnsw->data_size);
+        auto vector_buffer = env->NewDirectByteBuffer(item_pointers[i], data_size);
         env->SetObjectArrayElement(result_vectors, (jsize)i, (jobject)vector_buffer);
     }
     return result_count;
@@ -189,4 +137,6 @@ JNIEXPORT jlongArray JNICALL Java_com_criteo_hnsw_HnswLib_getLabels(JNIEnv *env,
     jlongArray result = env->NewLongArray(labels.size());
     env->SetLongArrayRegion(result, 0, labels.size(), (jlong *) labels.data());
     return result;
+}
+
 }

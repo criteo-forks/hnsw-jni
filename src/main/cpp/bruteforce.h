@@ -63,8 +63,6 @@ namespace hnswlib {
         size_t size_per_element_;
 
         size_t data_size_;
-        DISTFUNC <dist_t> fstdistfunc_;
-        void *dist_func_param_;
         std::unique_ptr<BruteforceSearchAlg<dist_t>> alg_;
 
         std::unordered_map<labeltype, tableint> dict_external_to_internal;
