@@ -17,6 +17,7 @@ enum Distance {
 enum Precision {
     Float32 = 1,
     Float16 = 2,
+    num_values,
 };
 
 template<typename dist_t, typename data_t=float>

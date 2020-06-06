@@ -1,11 +1,6 @@
-#include "doctest.h"
-#include "hnswindex.h"
-#include <cmath>
-#include <tuple>
+#include "common.h"
 
-const int seed = 42;
-
-float get_distance(const void* a, const void* b, int32_t dim, const hnswlib::SpaceInterface<float>* space) {
+float get_distance(const void* a, const void* b, const hnswlib::SpaceInterface<float>* space) {
     const auto sp = const_cast<hnswlib::SpaceInterface<float>*>(space);
     const auto dist_func = sp->get_dist_func();
     const auto dist_func_param = sp->get_dist_func_param();
@@ -24,13 +19,6 @@ void to_float32(const size_t dim, const std::vector<uint16_t> &src, std::vector<
 
 float p2(float x) { return pow(x, 2); }
 
-// Reimplemented from Approx(double) for floats
-bool is_approx_euqal(float lhs, float rhs, float epsilon) {
-    const auto absolute_error = std::abs(lhs - rhs);
-    const auto expected_error = epsilon * (1 + std::max(std::fabs(lhs), std::fabs(rhs)));
-    return absolute_error < expected_error;
-}
-
 TEST_CASE("Check Float16 encoding-decoding on small vectors (1 - 16)") {
     const std::vector<float> a {0.f,    1.f,    1.001f, 2.f,    2.009f, 3.f,    4.f,    6.f,    0.5f,   -0.45f, 0.3f,  0.2f,  -0.2f, 0.1f,  0.005f, 0.006f};
     const std::vector<float> e {1E-30f, 1E-30f, 3E-5,   1E-30f, 4E-4f,  1E-30f, 1E-30f, 1E-30f, 1E-30f, 2E-4f,  2E-4f, 3E-4f, 3E-4f, 3E-4f, 1E-5f,  1E-6f};
@@ -48,7 +36,7 @@ TEST_CASE("Check Float16 encoding-decoding on small vectors (1 - 16)") {
             CAPTURE(epsilon);
             CAPTURE(actual);
             CAPTURE(expected);
-            REQUIRE(is_approx_euqal(actual, expected, epsilon));
+            REQUIRE(is_approx_equal(actual, expected, epsilon));
         }
     }
 }
@@ -72,7 +60,7 @@ TEST_CASE("Check Float16 encoding-decoding on large vectors") {
         for (int32_t i = 0; i < dim; i++) {
             auto decoded_f16 = a_f32[i];
             auto expected = a[i];
-            REQUIRE(is_approx_euqal(decoded_f16, expected, epsilon));
+            REQUIRE(is_approx_equal(decoded_f16, expected, epsilon));
         }
     }
 }
@@ -99,7 +87,7 @@ TEST_CASE("Check L2 squared distance computation on small vectors") {
         CAPTURE(dim);
         INFO("float32 (no error)");
         const auto space32 = hnswlib::L2Space(dim);
-        const auto result32 = get_distance(a.data(), b.data(), dim, &space32);
+        const auto result32 = get_distance(a.data(), b.data(), &space32);
         CAPTURE(result32);
         CAPTURE(expected_distance);
         REQUIRE_EQ(result32, expected_distance);
@@ -110,9 +98,9 @@ TEST_CASE("Check L2 squared distance computation on small vectors") {
         to_float16(dim, a, a_f16);
         to_float16(dim, b, b_f16);
 
-        const auto result16 = get_distance(a_f16.data(), b_f16.data(), dim, &space16);
+        const auto result16 = get_distance(a_f16.data(), b_f16.data(), &space16);
         CAPTURE(result16);
-        REQUIRE(is_approx_euqal(result16, expected_distance, epsilon));
+        REQUIRE(is_approx_equal(result16, expected_distance, epsilon));
     }
 }
 
@@ -146,19 +134,19 @@ TEST_CASE ("Check L2 squared distance computation on large vectors") {
         CAPTURE("float32 Allowed Error: " << epsilon32);
 
         const auto space32 = hnswlib::L2Space(dim);
-        const auto result32 = get_distance(a.data(), b.data(), dim, &space32);
+        const auto result32 = get_distance(a.data(), b.data(), &space32);
         CAPTURE(expected_distance);
         CAPTURE(result32);
-        REQUIRE(is_approx_euqal(result32, expected_distance, epsilon32));
+        REQUIRE(is_approx_equal(result32, expected_distance, epsilon32));
         CAPTURE("float16. Allowed Error: " << epsilon16);
 
         const auto space16 = hnswlib::L2SpaceF16(dim);
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
         to_float16(dim, a, a_f16);
         to_float16(dim, b, b_f16);
-        const auto result16 = get_distance(a_f16.data(), b_f16.data(), dim, &space16);
+        const auto result16 = get_distance(a_f16.data(), b_f16.data(), &space16);
         CAPTURE(result16);
-        REQUIRE(is_approx_euqal(result16, expected_distance, epsilon16));
+        REQUIRE(is_approx_equal(result16, expected_distance, epsilon16));
     }
 }
 
@@ -184,7 +172,7 @@ TEST_CASE("Check Inner Product distance computation on small vectors") {
         CAPTURE(dim);
         INFO("float32 (no error)");
         const auto space32 = hnswlib::InnerProductSpace(dim);
-        const auto result32 = get_distance(a.data(), b.data(), dim, &space32);
+        const auto result32 = get_distance(a.data(), b.data(), &space32);
         CAPTURE(expected_distance);
         CAPTURE(result32);
         REQUIRE_EQ(result32, expected_distance);
@@ -196,9 +184,9 @@ TEST_CASE("Check Inner Product distance computation on small vectors") {
         to_float16(dim, a, a_f16);
         to_float16(dim, b, b_f16);
 
-        const auto result16 = get_distance(a_f16.data(), b_f16.data(), dim, &space16);
+        const auto result16 = get_distance(a_f16.data(), b_f16.data(), &space16);
         CAPTURE(result16);
-        REQUIRE(is_approx_euqal(result16, expected_distance, epsilon));
+        REQUIRE(is_approx_equal(result16, expected_distance, epsilon));
     }
 }
 
@@ -232,10 +220,10 @@ TEST_CASE ("Check Inner Product distance computation on large vectors") {
         CAPTURE("float32 Allowed Error: " << epsilon32);
 
         const auto space32 = hnswlib::InnerProductSpace(dim);
-        auto result32 = get_distance(a.data(), b.data(), dim, &space32);
+        auto result32 = get_distance(a.data(), b.data(), &space32);
         CAPTURE(expected_distance);
         CAPTURE(result32);
-        REQUIRE(is_approx_euqal(result32, expected_distance, epsilon32));
+        REQUIRE(is_approx_equal(result32, expected_distance, epsilon32));
 
         CAPTURE("float16. Allowed Error: " << epsilon16);
 
@@ -243,8 +231,8 @@ TEST_CASE ("Check Inner Product distance computation on large vectors") {
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
         to_float16(dim, a, a_f16);
         to_float16(dim, b, b_f16);
-        auto result16 = get_distance(a_f16.data(), b_f16.data(), dim, &space16);
+        auto result16 = get_distance(a_f16.data(), b_f16.data(), &space16);
         CAPTURE(result16);
-        REQUIRE(is_approx_euqal(result16, expected_distance, epsilon16));
+        REQUIRE(is_approx_equal(result16, expected_distance, epsilon16));
     }
 }
