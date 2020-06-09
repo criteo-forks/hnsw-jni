@@ -8,8 +8,8 @@
 class MathLib {
 public:
     explicit MathLib(const int dim) : dimension(dim) {
-        ip_dist_func = hnswlib::InnerProductSpace(dim).get_dist_func();
-        l2_dist_func = hnswlib::L2Space(dim).get_dist_func();
+        ip_dist_func = hnswlib::InnerProductSpace<float>(dim).get_dist_func();
+        l2_dist_func = hnswlib::L2Space<float>(dim).get_dist_func();
         // TODO: Replace with optimized l2 norm function. Currently we compute l2 norm as l2 distance from zero vector
         zero_vector.assign(dim, 0.f);
         zero_vector_ptr = zero_vector.data();

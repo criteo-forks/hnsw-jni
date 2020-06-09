@@ -3,7 +3,7 @@
 
 namespace hnswlib {
 
-    static void
+    static inline void
     encode_vector_float16(const float* src, uint16_t* dst, const size_t qty) {
         for (size_t i = 0; i < qty; i++) {
             *dst = encode_fp16(*src);
@@ -12,7 +12,7 @@ namespace hnswlib {
         }
     }
 
-    static void
+    static inline void
     decode_float16_vector(const uint16_t* src, float* dst, const size_t qty) {
         for (size_t i = 0; i < qty; i++) {
             *dst = decode_fp16(*src);
@@ -121,7 +121,7 @@ namespace hnswlib {
     }
 #endif
 
-    static
+    static inline
     DECODEFUNC<float, uint16_t> get_fast_float16_encode_func(size_t dim) {
         auto func = encode_vector_float16;
     #if defined(USE_SSE)
@@ -135,7 +135,7 @@ namespace hnswlib {
         return func;
     }
 
-    static
+    static inline
     DECODEFUNC<uint16_t, float> get_fast_float16_decode_func(size_t dim) {
         auto func = decode_float16_vector;
     #if defined(USE_SSE)

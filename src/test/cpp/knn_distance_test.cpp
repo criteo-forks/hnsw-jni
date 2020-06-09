@@ -86,13 +86,13 @@ TEST_CASE("Check L2 squared distance computation on small vectors") {
         const auto expected_distance = std::get<2>(element);
         CAPTURE(dim);
         INFO("float32 (no error)");
-        const auto space32 = hnswlib::L2Space(dim);
+        const auto space32 = hnswlib::L2Space<float>(dim);
         const auto result32 = get_distance(a.data(), b.data(), &space32);
         CAPTURE(result32);
         CAPTURE(expected_distance);
         REQUIRE_EQ(result32, expected_distance);
         CAPTURE("float16. Allowed Error: " << epsilon);
-        const auto space16 = hnswlib::L2SpaceF16(dim);
+        const auto space16 = hnswlib::L2Space<uint16_t>(dim);
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
 
         to_float16(dim, a, a_f16);
@@ -133,14 +133,14 @@ TEST_CASE ("Check L2 squared distance computation on large vectors") {
         const auto expected_distance = dim*p2(component_diff);
         CAPTURE("float32 Allowed Error: " << epsilon32);
 
-        const auto space32 = hnswlib::L2Space(dim);
+        const auto space32 = hnswlib::L2Space<float>(dim);
         const auto result32 = get_distance(a.data(), b.data(), &space32);
         CAPTURE(expected_distance);
         CAPTURE(result32);
         REQUIRE(is_approx_equal(result32, expected_distance, epsilon32));
         CAPTURE("float16. Allowed Error: " << epsilon16);
 
-        const auto space16 = hnswlib::L2SpaceF16(dim);
+        const auto space16 = hnswlib::L2Space<uint16_t>(dim);
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
         to_float16(dim, a, a_f16);
         to_float16(dim, b, b_f16);
@@ -171,14 +171,14 @@ TEST_CASE("Check Inner Product distance computation on small vectors") {
         const auto expected_distance = std::get<2>(element);
         CAPTURE(dim);
         INFO("float32 (no error)");
-        const auto space32 = hnswlib::InnerProductSpace(dim);
+        const auto space32 = hnswlib::InnerProductSpace<float>(dim);
         const auto result32 = get_distance(a.data(), b.data(), &space32);
         CAPTURE(expected_distance);
         CAPTURE(result32);
         REQUIRE_EQ(result32, expected_distance);
         CAPTURE("float16. Allowed Error: " << epsilon);
 
-        const auto space16 = hnswlib::InnerProductSpaceF16(dim);
+        const auto space16 = hnswlib::InnerProductSpace<uint16_t>(dim);
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
 
         to_float16(dim, a, a_f16);
@@ -219,7 +219,7 @@ TEST_CASE ("Check Inner Product distance computation on large vectors") {
         const auto expected_distance = 1 - component_ratio;
         CAPTURE("float32 Allowed Error: " << epsilon32);
 
-        const auto space32 = hnswlib::InnerProductSpace(dim);
+        const auto space32 = hnswlib::InnerProductSpace<float>(dim);
         auto result32 = get_distance(a.data(), b.data(), &space32);
         CAPTURE(expected_distance);
         CAPTURE(result32);
@@ -227,7 +227,7 @@ TEST_CASE ("Check Inner Product distance computation on large vectors") {
 
         CAPTURE("float16. Allowed Error: " << epsilon16);
 
-        const auto space16 = hnswlib::InnerProductSpaceF16(dim);
+        const auto space16 = hnswlib::InnerProductSpace<uint16_t>(dim);
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
         to_float16(dim, a, a_f16);
         to_float16(dim, b, b_f16);

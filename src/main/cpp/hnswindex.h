@@ -28,14 +28,14 @@ public:
         switch (distance) {
             case Euclidean:
                 if (precision == Float16)
-                     space = new hnswlib::L2SpaceF16(dim);
-                else space = new hnswlib::L2Space(dim);
+                     space = new hnswlib::L2Space<uint16_t>(dim);
+                else space = new hnswlib::L2Space<float>(dim);
                 break;
             case Angular:
             case InnerProduct:
                 if (precision == Float16)
-                     space = new hnswlib::InnerProductSpaceF16(dim);
-                else space = new hnswlib::InnerProductSpace(dim);
+                     space = new hnswlib::InnerProductSpace<uint16_t>(dim);
+                else space = new hnswlib::InnerProductSpace<float>(dim);
                 break;
             case Kendall:
                 space = new hnswlib::KendallSpace(dim);
