@@ -191,6 +191,7 @@ namespace hnswlib {
     class InnerProductSpace : public SpaceInterface<float> {
 
         DISTFUNC<float> fstdistfunc_;
+        DISTFUNC<float> fstdist_search_func_;
         const size_t data_size_;
         size_t dim_;
     public:
@@ -198,18 +199,23 @@ namespace hnswlib {
         : data_size_(dim * sizeof(TCOMPR))
         , dim_(dim) {
             fstdistfunc_ = InnerProduct<TCOMPR, TCOMPR>;
+            fstdist_search_func_ = InnerProduct<float, TCOMPR>;
     #if defined(USE_AVX) || defined(USE_SSE)
             if (dim % 4 == 0) {
                 fstdistfunc_ = InnerProductSIMD4Ext<TCOMPR, TCOMPR>;
+                fstdist_search_func_ = InnerProductSIMD4Ext<float, TCOMPR>;
             }
             if (dim % 8 == 0) {
                 fstdistfunc_ = InnerProductSIMD8Ext<TCOMPR, TCOMPR>;
+                fstdist_search_func_ = InnerProductSIMD8Ext<float, TCOMPR>;
             }
             else if (dim > 8) {
                 fstdistfunc_ = InnerProductSIMD8ExtResiduals<TCOMPR, TCOMPR>;
+                fstdist_search_func_ = InnerProductSIMD8ExtResiduals<float, TCOMPR>;
             }
             else if (dim > 4) {
                 fstdistfunc_ = InnerProductSIMD4ExtResiduals<TCOMPR, TCOMPR>;
+                fstdist_search_func_ = InnerProductSIMD4ExtResiduals<float, TCOMPR>;
             }
     #endif
         }
@@ -220,6 +226,10 @@ namespace hnswlib {
 
         DISTFUNC<float> get_dist_func() override {
             return fstdistfunc_;
+        }
+
+        DISTFUNC<float> get_search_dist_func() const override {
+            return fstdist_search_func_;
         }
 
         void *get_dist_func_param() override {

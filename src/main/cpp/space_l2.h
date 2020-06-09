@@ -111,6 +111,7 @@ namespace hnswlib {
     class L2Space : public SpaceInterface<float> {
 
         DISTFUNC<float> fstdistfunc_;
+        DISTFUNC<float> fstdist_search_func_;
         const size_t data_size_;
         size_t dim_;
     public:
@@ -118,18 +119,23 @@ namespace hnswlib {
         : data_size_(dim * sizeof(TCOMPR))
         , dim_(dim) {
             fstdistfunc_ = L2Sqr<TCOMPR, TCOMPR>;
+            fstdist_search_func_ = L2Sqr<float, TCOMPR>;
         #if defined(USE_SSE) || defined(USE_AVX)
             if (dim % 8 == 0) {
                 fstdistfunc_ = L2SqrSIMD8Ext<TCOMPR, TCOMPR>;
+                fstdist_search_func_ = L2SqrSIMD8Ext<float, TCOMPR>;
             }
             else if (dim % 4 == 0) {
                 fstdistfunc_ = L2SqrSIMD4Ext<TCOMPR, TCOMPR>;
+                fstdist_search_func_ = L2SqrSIMD4Ext<float, TCOMPR>;
             }
             else if (dim > 8) {
                 fstdistfunc_ = L2SqrSIMD8ExtResiduals<TCOMPR, TCOMPR>;
+                fstdist_search_func_ = L2SqrSIMD8ExtResiduals<float, TCOMPR>;
             }
             else if (dim > 4) {
                 fstdistfunc_ = L2SqrSIMD4ExtResiduals<TCOMPR, TCOMPR>;
+                fstdist_search_func_ = L2SqrSIMD4ExtResiduals<float, TCOMPR>;
             }
         #endif
         }
@@ -140,6 +146,10 @@ namespace hnswlib {
 
         DISTFUNC<float> get_dist_func() override {
             return fstdistfunc_;
+        }
+
+        DISTFUNC<float> get_search_dist_func() const override {
+            return fstdist_search_func_;
         }
 
         void *get_dist_func_param() override {
@@ -197,6 +207,10 @@ namespace hnswlib {
         }
 
         DISTFUNC<int> get_dist_func() override {
+            return fstdistfunc_;
+        }
+
+        DISTFUNC<int> get_search_dist_func() const override {
             return fstdistfunc_;
         }
 

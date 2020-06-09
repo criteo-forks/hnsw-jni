@@ -109,7 +109,8 @@ public:
     void addItem(dist_t* vector, size_t id) {
         std::vector<dist_t> norm_array;
         std::vector<uint16_t> encoded_float16_vector;
-        void* vector_data = processItem(vector, norm_array, encoded_float16_vector);
+        const auto normalized_data = normalizeItem(vector, norm_array);
+        const auto vector_data = encodeItem(normalized_data, encoded_float16_vector);
         appr_alg->addPoint(vector_data, (size_t) id);
     }
 
@@ -143,21 +144,23 @@ public:
         return labels;
     }
 
-    void* processItem(dist_t* item, std::vector<dist_t>& norm_array, std::vector<uint16_t>& encoded_float16_vector) {
-        void* data = item;
+    dist_t* normalizeItem(dist_t* item, std::vector<dist_t>& norm_array) {
         if(normalize) {
             norm_array.resize(dim);
-            normalizeVector(static_cast<dist_t*>(data), norm_array.data());
-            data = norm_array.data();
+            normalizeVector(static_cast<dist_t*>(item), norm_array.data());
+            return norm_array.data();
         }
-        if (precision == Float16) {
-            encoded_float16_vector.resize(dim);
-            encodeFloat16(static_cast<dist_t*>(data), encoded_float16_vector.data());
-            data = encoded_float16_vector.data();
-        }
-        return data;
+        return item;
     }
 
+    void* encodeItem(dist_t* item, std::vector<uint16_t>& encoded_float16_vector) {
+        if (precision == Float16) {
+            encoded_float16_vector.resize(dim);
+            encodeFloat16(static_cast<dist_t*>(item), encoded_float16_vector.data());
+            return encoded_float16_vector.data();
+        }
+        return item;
+    }
     /**
      * `knnQuery` - runs knn search on the query vector and returns k closest neighbours with
      * distance from query and pointer to each result.
@@ -176,9 +179,7 @@ public:
     template<bool bruteforce_search=false>
     size_t knnQuery(dist_t* query, size_t* result_labels, dist_t* result_distances, data_t** results_pointers, size_t k) {
         std::vector<dist_t> norm_array;
-        std::vector<uint16_t> encoded_float16_vector;
-        // TODO: Add asymmetric distance computation to avoid f32->f16->f32*n conversions for query vector
-        const auto query_data = processItem(query, norm_array, encoded_float16_vector);
+        const auto query_data = normalizeItem(query, norm_array);
 
         std::priority_queue<std::pair<dist_t, hnswlib::tableint >> result;
         if(!bruteforce_search) {

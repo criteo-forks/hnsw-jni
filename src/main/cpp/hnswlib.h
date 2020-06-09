@@ -60,6 +60,8 @@ namespace hnswlib {
 
         virtual DISTFUNC<MTYPE> get_dist_func() = 0;
 
+        virtual DISTFUNC<MTYPE> get_search_dist_func() const = 0;
+
         virtual void *get_dist_func_param() = 0;
 
         virtual ~SpaceInterface() {}

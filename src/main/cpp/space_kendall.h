@@ -48,6 +48,10 @@ namespace hnswlib {
             return fstdistfunc_;
         }
 
+        DISTFUNC<float> get_search_dist_func() const override {
+            return fstdistfunc_;
+        }
+
         void *get_dist_func_param() override {
             return &dim_;
         }
