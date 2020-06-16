@@ -4,6 +4,7 @@ import org.openjdk.jmh.annotations.*;
 
 public class HnswKnn extends BaseBench {
     public FloatByteBuf queryVector;
+    public Decoder decoder;
 
     @Param({Metrics.DotProduct, Metrics.Euclidean})
     public String metric;
@@ -14,11 +15,13 @@ public class HnswKnn extends BaseBench {
     @Setup(Level.Trial)
     public void globalSetup() {
         index = createIndex(metric, precision);
+        decoder = Decoder.create(index.getDimension(), precision);
     }
 
     @Setup(Level.Invocation)
     public void setupIter() {
-        queryVector = index.getItem(randomId());
+        FloatByteBuf encoded = index.getItem(randomId());
+        queryVector = decoder.decode(encoded);
     }
 
     @Benchmark
