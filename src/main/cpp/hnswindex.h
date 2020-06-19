@@ -47,8 +47,8 @@ public:
                 throw std::runtime_error("Distance not supported: " + std::to_string(distance));
         }
         normalize = distance == Angular;
-        decode_func_float16 = hnswlib::get_fast_float16_decode_func(dim);
-        encode_func_float16 = hnswlib::get_fast_float16_encode_func(dim);
+        decode_func_float16 = hnswlib::get_fast_encode_func<uint16_t, float>(dim);
+        encode_func_float16 = hnswlib::get_fast_encode_func<float, uint16_t>(dim);
     }
 
     void initNewIndex(const size_t maxElements, const size_t M, const size_t efConstruction, const size_t random_seed) {
