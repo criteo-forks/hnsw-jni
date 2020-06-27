@@ -43,7 +43,7 @@ namespace hnswlib {
             pVect1 += 8;
             __m256 v2 = load_component_avx(pVect2);
             pVect2 += 8;
-            sum256 = _mm256_add_ps(sum256, _mm256_mul_ps(v1, v2));
+            sum256 += v1 * v2;
         }
 
         __m128 v1, v2;
@@ -54,7 +54,7 @@ namespace hnswlib {
             pVect1 += 4;
             v2 = load_component_sse(pVect2);
             pVect2 += 4;
-            sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
+            sum_prod += v1 * v2;
         }
         float PORTABLE_ALIGN32 TmpRes[8];
         _mm_store_ps(TmpRes, sum_prod);
@@ -81,7 +81,7 @@ namespace hnswlib {
             pVect1 += 4;
             v2 = load_component_sse(pVect2);
             pVect2 += 4;
-            sum_prod = _mm_add_ps(sum_prod, _mm_mul_ps(v1, v2));
+            sum_prod += v1 * v2;
         }
         float PORTABLE_ALIGN32 TmpRes[8];
         _mm_store_ps(TmpRes, sum_prod);
@@ -110,7 +110,7 @@ namespace hnswlib {
             pVect1 += 8;
             __m256 v2 = load_component_avx(pVect2);
             pVect2 += 8;
-            sum256 = _mm256_add_ps(sum256, _mm256_mul_ps(v1, v2));
+            sum256 += v1 * v2;
         }
 
         float PORTABLE_ALIGN32 TmpRes[8];

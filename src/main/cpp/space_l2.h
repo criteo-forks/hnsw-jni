@@ -31,19 +31,16 @@ namespace hnswlib {
         auto pVect1 = static_cast<const TARG1*>(pVect1v);
         auto pVect2 = static_cast<const TARG2*>(pVect2v);
         const auto qty = *static_cast<const size_t*>(qty_ptr);
-
         const auto pEnd1 = pVect1 + qty;
-
-        __m256 diff, v1, v2;
-        __m256 sum = _mm256_set1_ps(0);
+        auto sum = _mm256_set1_ps(0);
 
         while (pVect1 < pEnd1) {
-            v1 = load_component_avx(pVect1);
+            const auto v1 = load_component_avx(pVect1);
             pVect1 += 8;
-            v2 = load_component_avx(pVect2);
+            const auto v2 = load_component_avx(pVect2);
             pVect2 += 8;
-            diff = _mm256_sub_ps(v1, v2);
-            sum = _mm256_add_ps(sum, _mm256_mul_ps(diff, diff));
+            const auto diff = v1 - v2;
+            sum += diff * diff;
         }
 
         float PORTABLE_ALIGN32 TmpRes[8];
@@ -76,16 +73,15 @@ namespace hnswlib {
         const auto qty = *static_cast<const size_t*>(qty_ptr);
         const auto pEnd1 = pVect1 + qty;
 
-        __m128 diff, v1, v2;
         __m128 sum = _mm_set1_ps(0);
 
         while (pVect1 < pEnd1) {
-            v1 = load_component_sse(pVect1);
+            const auto v1 = load_component_sse(pVect1);
             pVect1 += 4;
-            v2 = load_component_sse(pVect2);
+            const auto v2 = load_component_sse(pVect2);
             pVect2 += 4;
-            diff = _mm_sub_ps(v1, v2);
-            sum = _mm_add_ps(sum, _mm_mul_ps(diff, diff));
+            const auto diff = v1 - v2;
+            sum += diff * diff;
         }
         float PORTABLE_ALIGN32 TmpRes[8];
         _mm_store_ps(TmpRes, sum);
