@@ -7,16 +7,6 @@ float get_distance(const void* a, const void* b, const hnswlib::SpaceInterface<f
     return dist_func(a, b, dist_func_param);
 }
 
-void to_float16(const size_t dim, const std::vector<float> &src, std::vector<uint16_t> &dst) {
-    const auto encode_func = hnswlib::get_fast_encode_func<float, uint16_t>(dim);
-    encode_func(src.data(), dst.data(), dim);
-}
-
-void to_float32(const size_t dim, const std::vector<uint16_t> &src, std::vector<float> &dst) {
-    const auto decode_func = hnswlib::get_fast_encode_func<uint16_t, float>(dim);
-    decode_func(src.data(), dst.data(), dim);
-}
-
 float p2(float x) { return pow(x, 2); }
 
 TEST_CASE("Check Float16 encoding-decoding on small vectors (1 - 16)") {

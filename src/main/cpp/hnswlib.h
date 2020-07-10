@@ -49,8 +49,8 @@ namespace hnswlib {
     template<typename MTYPE>
     using DISTFUNC = MTYPE(*)(const void *, const void *, const void *);
 
-    template<typename SRC, typename DST>
-    using DECODEFUNC = std::function<void(const SRC*, DST*, size_t)>;
+    template<typename SRC, typename DST, typename PARAM>
+    using DECODEFUNC = std::function<void(const SRC*, DST*, const PARAM*)>;
 
     template<typename MTYPE>
     class SpaceInterface {

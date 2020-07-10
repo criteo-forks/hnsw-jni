@@ -129,11 +129,11 @@ public:
     }
 
     inline void decodeFloat16(const uint16_t* src, float* dst) {
-        decode_func_float16(src, dst, dim);
+        decode_func_float16(src, dst, static_cast<const size_t*>(space->get_dist_func_param()));
     }
 
     inline void encodeFloat16(const float* src, uint16_t* dst) {
-        encode_func_float16(src, dst, dim);
+        encode_func_float16(src, dst, static_cast<const size_t*>(space->get_dist_func_param()));
     }
 
     std::vector<size_t> getLabels() {
@@ -211,8 +211,8 @@ public:
     hnswlib::SpaceInterface<float>* space;
     const size_t dim;
     bool normalize = false;
-    hnswlib::DECODEFUNC<dist_t, uint16_t> encode_func_float16;
-    hnswlib::DECODEFUNC<uint16_t, dist_t> decode_func_float16;
+    hnswlib::DECODEFUNC<dist_t, uint16_t, size_t> encode_func_float16;
+    hnswlib::DECODEFUNC<uint16_t, dist_t, size_t> decode_func_float16;
     const Precision precision;
     const Distance distance;
     hnswlib::AlgorithmInterface<dist_t> * appr_alg = nullptr;

@@ -528,11 +528,11 @@ namespace hnswlib {
             output.close();
         }
         void loadIndex(const std::string &location, SpaceInterface<dist_t> *s, size_t max_elements_i=0) {
-            loadAndDecode<void, void>(location, s, nullptr, max_elements_i);
+            loadAndDecode<void, void, size_t>(location, s, nullptr, max_elements_i);
         }
 
-        template<typename SRC, typename DST>
-        void loadAndDecode(const std::string &location, SpaceInterface<dist_t> *s, DECODEFUNC<SRC, DST> decoder_func, size_t max_elements_i=0) {
+        template<typename SRC, typename DST, typename PARAM>
+        void loadAndDecode(const std::string &location, SpaceInterface<dist_t> *s, DECODEFUNC<SRC, DST, PARAM> decoder_func, size_t max_elements_i=0) {
             std::ifstream input(location, std::ios::binary);
 
             readBinaryPOD(input, offsetLevel0_);
@@ -570,7 +570,7 @@ namespace hnswlib {
 
             size_links_level0_ = maxM0_ * sizeof(tableint) + sizeof(linklistsizeint);
 
-            // Infering old data_size
+            // Inferring old data_size
             const auto src_data_size = label_offset_ - size_links_level0_;
 
             // Either no decoder or same size of vecotrs
@@ -582,18 +582,18 @@ namespace hnswlib {
                 // Rewriting offsets per new size
                 label_offset_ = size_links_level0_ + data_size_;
                 size_data_per_element_ = size_data_per_element_ - src_data_size + data_size_;
-                data_level0_memory_ = (char *) malloc(max_elements * size_data_per_element_);
+                data_level0_memory_ = (char *) malloc(cur_element_count * size_data_per_element_);
 
-                const auto dim = *static_cast<size_t*>(s->get_dist_func_param());
+                const auto param = static_cast<PARAM*>(s->get_dist_func_param());
                 auto data_ptr = data_level0_memory_;
                 std::vector<char> src_buffer(src_data_size);
-                for(size_t i = 0; i < max_elements; i++) {
+                for(size_t i = 0; i < cur_element_count; i++) {
                     // Reading links
                     input.read(data_ptr, offsetData_);
                     data_ptr += offsetData_;
                     // Reading vector
                     input.read(src_buffer.data(), src_data_size);
-                    decoder_func((const SRC*)src_buffer.data(), (DST*)data_ptr, dim);
+                    decoder_func((const SRC *) src_buffer.data(), (DST *) data_ptr, param);
                     data_ptr += data_size_;
                     // Reading label
                     input.read(data_ptr, sizeof(labeltype));
@@ -624,9 +624,7 @@ namespace hnswlib {
                 }
             }
             input.close();
-
-            return;
-        }
+       }
 
         template<typename data_t>
         std::vector<data_t> getDataByLabel(labeltype label)
