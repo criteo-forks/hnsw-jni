@@ -573,12 +573,26 @@ namespace hnswlib {
             // Inferring old data_size
             const auto src_data_size = label_offset_ - size_links_level0_;
 
-            // Either no decoder or same size of vecotrs
+            // Either no decoder or same size of vectors
             if (decoder_func == nullptr || data_size_ == src_data_size) {
                 data_level0_memory_ = (char *) malloc(max_elements * size_data_per_element_);
                 input.read(data_level0_memory_, cur_element_count * size_data_per_element_);
             }
             else {
+                std::vector<char> src_buffer(src_data_size);
+                if (s->needs_initialization()) {
+                    for(size_t i = 0; i < cur_element_count; i++) {
+                        // Skip links
+                        input.seekg(offsetData_, input.cur);
+                        // Read and train on source vector
+                        input.read(src_buffer.data(), src_data_size);
+                        s->train(reinterpret_cast<const float *>(src_buffer.data()));
+                        // Skip label
+                        input.seekg(sizeof(labeltype), input.cur);
+                    }
+                    input.clear();
+                    input.seekg(pos,input.beg);
+                }
                 // Rewriting offsets per new size
                 label_offset_ = size_links_level0_ + data_size_;
                 size_data_per_element_ = size_data_per_element_ - src_data_size + data_size_;
@@ -586,7 +600,6 @@ namespace hnswlib {
 
                 const auto param = static_cast<PARAM*>(s->get_dist_func_param());
                 auto data_ptr = data_level0_memory_;
-                std::vector<char> src_buffer(src_data_size);
                 for(size_t i = 0; i < cur_element_count; i++) {
                     // Reading links
                     input.read(data_ptr, offsetData_);

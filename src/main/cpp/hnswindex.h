@@ -17,6 +17,7 @@ enum Distance {
 enum Precision {
     Float32 = 1,
     Float16 = 2,
+    Float8 = 3,
     num_values,
 };
 
@@ -27,15 +28,21 @@ public:
         dim(dim), precision(precision), distance(distance) {
         switch (distance) {
             case Euclidean:
-                if (precision == Float16)
-                     space = new hnswlib::L2Space<uint16_t>(dim);
-                else space = new hnswlib::L2Space<float>(dim);
+                switch (precision) {
+                    case Float8: space = new hnswlib::L2TrainedSpace<uint8_t>(dim); break;
+                    case Float16: space = new hnswlib::L2Space<uint16_t>(dim); break;
+                    case Float32:
+                    default: space = new hnswlib::L2Space<float>(dim); break;
+                }
                 break;
             case Angular:
             case InnerProduct:
-                if (precision == Float16)
-                     space = new hnswlib::InnerProductSpace<uint16_t>(dim);
-                else space = new hnswlib::InnerProductSpace<float>(dim);
+                switch (precision) {
+                    case Float8: space = new hnswlib::InnerProductTrainedSpace<uint8_t>(dim); break;
+                    case Float16: space = new hnswlib::InnerProductSpace<uint16_t>(dim); break;
+                    case Float32:
+                    default: space = new hnswlib::InnerProductSpace<float>(dim); break;
+                }
                 break;
             case Kendall:
                 space = new hnswlib::KendallSpace(dim);
@@ -49,6 +56,8 @@ public:
         normalize = distance == Angular;
         decode_func_float16 = hnswlib::get_fast_encode_func<uint16_t, float>(dim);
         encode_func_float16 = hnswlib::get_fast_encode_func<float, uint16_t>(dim);
+        decode_func_float8 = hnswlib::get_fast_decode_trained_func(dim);
+        encode_func_float8 = hnswlib::encode_trained_vector;
     }
 
     void initNewIndex(const size_t maxElements, const size_t M, const size_t efConstruction, const size_t random_seed) {
@@ -77,12 +86,12 @@ public:
     }
 
     void loadIndex(const std::string &path_to_index) {
-        hnswlib::HierarchicalNSW<dist_t> * algo;
-        if (precision == Float16) {
-            algo = new hnswlib::HierarchicalNSW<dist_t>(space);
-            algo->template loadAndDecode<float, uint16_t>(path_to_index, space, encode_func_float16);
-        } else {
-            algo = new hnswlib::HierarchicalNSW<dist_t>(space, path_to_index);
+        auto algo = new hnswlib::HierarchicalNSW<dist_t>(space);
+        switch (precision) {
+            case Float32: algo->template loadAndDecode<float, float, size_t>(path_to_index, space, nullptr); break;
+            case Float16: algo->template loadAndDecode<float, uint16_t, size_t>(path_to_index, space, encode_func_float16); break;
+            case Float8:  algo->template loadAndDecode<float, uint8_t, hnswlib::TrainParams>(path_to_index, space, encode_func_float8); break;
+            default: throw std::runtime_error("Unsupported precision " + std::to_string(precision));
         }
         setAlgorithm(algo);
     }
@@ -108,9 +117,9 @@ public:
 
     void addItem(dist_t* vector, size_t id) {
         std::vector<dist_t> norm_array;
-        std::vector<uint16_t> encoded_float16_vector;
+        std::vector<char> encoded_vector;
         const auto normalized_data = normalizeItem(vector, norm_array);
-        const auto vector_data = encodeItem(normalized_data, encoded_float16_vector);
+        const auto vector_data = encodeItem(normalized_data, encoded_vector);
         appr_alg->addPoint(vector_data, (size_t) id);
     }
 
@@ -136,6 +145,14 @@ public:
         encode_func_float16(src, dst, static_cast<const size_t*>(space->get_dist_func_param()));
     }
 
+    inline void decodeFloat8(const uint8_t* src, float* dst) {
+        decode_func_float8(src, dst, static_cast<const hnswlib::TrainParams*>(space->get_dist_func_param()));
+    }
+
+    inline void encodeFloat8(const float* src, uint8_t* dst) {
+        encode_func_float8(src, dst, static_cast<const hnswlib::TrainParams*>(space->get_dist_func_param()));
+    }
+
     std::vector<size_t> getLabels() {
         std::vector<size_t> labels;
         for(auto & iter : *label_lookup_) {
@@ -153,13 +170,17 @@ public:
         return item;
     }
 
-    void* encodeItem(dist_t* item, std::vector<uint16_t>& encoded_float16_vector) {
-        if (precision == Float16) {
-            encoded_float16_vector.resize(dim);
-            encodeFloat16(static_cast<dist_t*>(item), encoded_float16_vector.data());
-            return encoded_float16_vector.data();
+    void* encodeItem(dist_t* item, std::vector<char>& encoded_vector) {
+        if (precision == Float32) {
+            return item;
         }
-        return item;
+        encoded_vector.resize(space->get_data_size());
+        switch (precision) {
+            case Float16: encodeFloat16(static_cast<dist_t *>(item), reinterpret_cast<uint16_t *>(encoded_vector.data())); break;
+            case Float8:  encodeFloat8(static_cast<dist_t *>(item), reinterpret_cast<uint8_t *>(encoded_vector.data())); break;
+            default: throw std::runtime_error("Unsupported precision " + std::to_string(precision));
+        }
+        return encoded_vector.data();
     }
     /**
      * `knnQuery` - runs knn search on the query vector and returns k closest neighbours with
@@ -213,6 +234,8 @@ public:
     bool normalize = false;
     hnswlib::DECODEFUNC<dist_t, uint16_t, size_t> encode_func_float16;
     hnswlib::DECODEFUNC<uint16_t, dist_t, size_t> decode_func_float16;
+    hnswlib::DECODEFUNC<dist_t, uint8_t, hnswlib::TrainParams> encode_func_float8;
+    hnswlib::DECODEFUNC<uint8_t, dist_t, hnswlib::TrainParams> decode_func_float8;
     const Precision precision;
     const Distance distance;
     hnswlib::AlgorithmInterface<dist_t> * appr_alg = nullptr;
