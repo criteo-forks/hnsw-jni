@@ -141,24 +141,27 @@ TEST_CASE ("Check L2 squared distance computation on large vectors") {
 }
 
 TEST_CASE("Check Inner Product distance computation on small vectors") {
-    const std::vector<float> a {1.0, 2.0, 3.0, 0.5, 0.1,  0.2, -0.2,  0.005, 1.001};
-    const std::vector<float> b {2.0, 4.0, 6.0, 0.0, 0.3, -0.2, -0.45, 0.006, 2.009};
-    const std::vector<std::tuple<size_t, float, float>> expected_distances = {
-        /*              dim | epsilon | expected_distance */
-        std::make_tuple(1UL,  1E-30f,   1.f - (2.f)),
-        std::make_tuple(2UL,  1E-30f,   1.f - (2.f + 8.f)),
-        std::make_tuple(3UL,  1E-30f,   1.f - (2.f + 8.f + 18.f)),
-        std::make_tuple(4UL,  1E-30f,   1.f - (2.f + 8.f + 18.f + 0.f)),
-        std::make_tuple(5UL,  1E-6f ,   1.f - (2.f + 8.f + 18.f + 0.f + 0.03f)),
-        std::make_tuple(6UL,  1E-6f ,   1.f - (2.f + 8.f + 18.f + 0.f + 0.03f + -0.04f)),
-        std::make_tuple(7UL,  1E-6f ,   1.f - (2.f + 8.f + 18.f + 0.f + 0.03f + -0.04f + 0.09f)),
-        std::make_tuple(8UL,  1E-5f ,   1.f - (2.f + 8.f + 18.f + 0.f + 0.03f + -0.04f + 0.09f + 3E-5f)),
-        std::make_tuple(9UL,  1E-4f ,   1.f - (2.f + 8.f + 18.f + 0.f + 0.03f + -0.04f + 0.09f + 3E-5f + 2.011009f)),
+    const std::vector<float> a   { 1.0, 2.0,  3.0,  0.5,  0.1,   0.2,  -0.2,   0.005, 1.001};
+    const std::vector<float> b   { 2.0, 4.0,  6.0,  0.0,  0.3,  -0.2,  -0.45,  0.006, 2.009};
+    const std::vector<float> min { 1.0, 2.0,  3.0, -1.0, -0.3,  -0.5,  -0.82, -0.25,  0.89};
+    const std::vector<float> max { 2.0, 4.0,  6.0,  1.0,  0.56,  0.34, -0.125, 0.12,  3.25};
+    const std::vector<std::tuple<size_t, float, float, float>> expected_distances = {
+        /*       dim | epsilon 16 | epsilon 8| expected_distance */
+        std::make_tuple(1UL,  1E-30f, 1e-30, 1.f - (2.f)),
+        std::make_tuple(2UL,  1E-30f, 1e-30,  1.f - (2.f + 8.f)),
+        std::make_tuple(3UL,  1E-30f, 1e-30,  1.f - (2.f + 8.f + 18.f)),
+        std::make_tuple(4UL,  1E-30f, 7e-5,  1.f - (2.f + 8.f + 18.f + 0.f)),
+        std::make_tuple(5UL,  1E-6f , 7e-5,  1.f - (2.f + 8.f + 18.f + 0.f + 0.03f)),
+        std::make_tuple(6UL,  1E-6f , 7e-5,  1.f - (2.f + 8.f + 18.f + 0.f + 0.03f + -0.04f)),
+        std::make_tuple(7UL,  1E-6f , 7e-5,  1.f - (2.f + 8.f + 18.f + 0.f + 0.03f + -0.04f + 0.09f)),
+        std::make_tuple(8UL,  1E-5f , 7e-5,  1.f - (2.f + 8.f + 18.f + 0.f + 0.03f + -0.04f + 0.09f + 3E-5f)),
+        std::make_tuple(9UL,  1E-4f , 7e-5,  1.f - (2.f + 8.f + 18.f + 0.f + 0.03f + -0.04f + 0.09f + 3E-5f + 2.011009f)),
     };
     for (const auto &element : expected_distances) {
         const auto dim = std::get<0>(element);
-        const auto epsilon = std::get<1>(element);
-        const auto expected_distance = std::get<2>(element);
+        const auto epsilon16 = std::get<1>(element);
+        const auto epsilon8 = std::get<2>(element);
+        const auto expected_distance = std::get<3>(element);
         CAPTURE(dim);
         INFO("float32 (no error)");
         const auto space32 = hnswlib::InnerProductSpace<float>(dim);
@@ -166,7 +169,6 @@ TEST_CASE("Check Inner Product distance computation on small vectors") {
         CAPTURE(expected_distance);
         CAPTURE(result32);
         REQUIRE_EQ(result32, expected_distance);
-        CAPTURE("float16. Allowed Error: " << epsilon);
 
         const auto space16 = hnswlib::InnerProductSpace<uint16_t>(dim);
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
@@ -175,39 +177,58 @@ TEST_CASE("Check Inner Product distance computation on small vectors") {
         to_float16(dim, b, b_f16);
 
         const auto result16 = get_distance(a_f16.data(), b_f16.data(), &space16);
+        CAPTURE(epsilon16);
         CAPTURE(result16);
-        REQUIRE(is_approx_equal(result16, expected_distance, epsilon));
+        REQUIRE(is_approx_equal(result16, expected_distance, epsilon16));
+
+        auto space8 = hnswlib::InnerProductTrainedSpace<uint8_t>(dim);
+        space8.train(min.data());
+        space8.train(max.data());
+        std::vector<uint8_t> a_f8(dim), b_f8(dim);
+        const auto params = static_cast<hnswlib::TrainParams*>(space8.get_dist_func_param());
+        to_float8(a, a_f8, params);
+        to_float8(b, b_f8, params);
+        const auto result8 = get_distance(a_f8.data(), b_f8.data(), &space8);
+        CAPTURE(epsilon8);
+        CAPTURE(result8);
+        CAPTURE(expected_distance);
+        REQUIRE(is_approx_equal(result8, expected_distance, epsilon8));
     }
 }
 
 TEST_CASE ("Check Inner Product distance computation on large vectors") {
-    const std::vector<std::tuple<size_t, float, float>> expected_distances = {
-        /*              dim    | epsilon_f32 | epsilon_f16 */
-        std::make_tuple(16UL,       1E-6f,      3E-4f),
-        std::make_tuple(17UL,       1E-6f,      3E-4f),
-        std::make_tuple(32UL,       1E-6f,      3E-4f),
-        std::make_tuple(34UL,       1E-6f,      3E-4f),
-        std::make_tuple(54UL,       1E-6f,      3E-4f),
-        std::make_tuple(100UL,      1E-6f,      3E-4f),
-        std::make_tuple(256UL,      1E-5f,      3E-4f),
-        std::make_tuple(300UL,      1E-4f,      3E-4f),
-        std::make_tuple(1000UL,     1E-4f,      1E-3f),
-        std::make_tuple(1024UL,     1E-4f,      1E-3f),
+    const std::vector<std::tuple<size_t, float, float, float>> expected_distances = {
+        /*              dim    | epsilon_f32 | epsilon_f16 |  epsilon_f8 */
+        std::make_tuple(16UL,       1e-6,      2e-4,       4e-3),
+        std::make_tuple(17UL,       1e-6,      2e-4,       6e-4),
+        std::make_tuple(32UL,       1e-6,      1e-4,       6e-4),
+        std::make_tuple(34UL,       1e-6,      1e-4,       1e-3),
+        std::make_tuple(54UL,       1e-6,      1e-4,       2e-4),
+        std::make_tuple(100UL,      1e-6,      1e-4,       5e-4),
+        std::make_tuple(256UL,      1e-6,      2e-5,       1e-4),
+        std::make_tuple(300UL,      1e-6,      2e-5,       2e-4),
+        std::make_tuple(1000UL,     1e-6,      5e-5,       1e-4),
+        std::make_tuple(1024UL,     1e-6,      3e-5,       1e-4),
     };
     srand(seed);
-    const auto component_ratio = 2.05f;
     for (const auto &element : expected_distances) {
         const auto dim = std::get<0>(element);
         float epsilon32 = std::get<1>(element);
         float epsilon16 = std::get<2>(element);
+        float epsilon8 = std::get<3>(element);
         CAPTURE(dim);
-        std::vector<float> a(dim), b(dim);
-        for(int j = 0; j < dim; j++) {
-            a[j] = (static_cast<float>(rand()) / RAND_MAX) / static_cast<float>(dim);
-            b[j] = (component_ratio / a[j]) / (float)dim;
+        std::vector<float> a(dim), b(dim), min(dim), max(dim);
+        auto expected_distance = 0.f;
+        for(int i = 0; i < dim; i++) {
+            min[i] = get_random_float(-1, 1);
+            max[i] = get_random_float(min[i], 1);
+            a[i] = get_random_float(min[i], max[i]);
+            b[i] = get_random_float(min[i], max[i]);
+            expected_distance += a[i] * b[i];
         }
-        const auto expected_distance = 1 - component_ratio;
-        CAPTURE("float32 Allowed Error: " << epsilon32);
+        expected_distance = 1 - expected_distance;
+
+        CAPTURE(epsilon32);
 
         const auto space32 = hnswlib::InnerProductSpace<float>(dim);
         auto result32 = get_distance(a.data(), b.data(), &space32);
@@ -215,7 +236,7 @@ TEST_CASE ("Check Inner Product distance computation on large vectors") {
         CAPTURE(result32);
         REQUIRE(is_approx_equal(result32, expected_distance, epsilon32));
 
-        CAPTURE("float16. Allowed Error: " << epsilon16);
+        CAPTURE(epsilon16);
 
         const auto space16 = hnswlib::InnerProductSpace<uint16_t>(dim);
         std::vector<uint16_t> a_f16(dim), b_f16(dim);
@@ -224,5 +245,17 @@ TEST_CASE ("Check Inner Product distance computation on large vectors") {
         auto result16 = get_distance(a_f16.data(), b_f16.data(), &space16);
         CAPTURE(result16);
         REQUIRE(is_approx_equal(result16, expected_distance, epsilon16));
+
+        auto space8 = hnswlib::InnerProductTrainedSpace<uint8_t>(dim);
+        const auto range = hnswlib::MinMaxRange(min, max);
+        space8.initialize_params(&range);
+        const auto params = static_cast<hnswlib::TrainParams*>(space8.get_dist_func_param());
+        std::vector<uint8_t> a_f8(dim), b_f8(dim);
+        to_float8(a, a_f8, params);
+        to_float8(b, b_f8, params);
+        auto result8 = get_distance(a_f8.data(), b_f8.data(), &space8);
+        CAPTURE(epsilon8);
+        CAPTURE(result8);
+        REQUIRE(is_approx_equal(result8, expected_distance, epsilon8));
     }
 }

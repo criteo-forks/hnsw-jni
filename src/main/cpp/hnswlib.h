@@ -62,6 +62,14 @@ namespace hnswlib {
 
         virtual DISTFUNC<MTYPE> get_search_dist_func() const = 0;
 
+        virtual bool needs_initialization() const {
+            return false;
+        }
+
+        virtual void train(const float* vectors) {}
+
+        virtual void initialize_params(const void*) {}
+
         virtual void *get_dist_func_param() = 0;
 
         virtual ~SpaceInterface() {}
@@ -89,6 +97,8 @@ namespace hnswlib {
 #include "float8.h"
 #include "encoding.h"
 #include "space_ip.h"
+#include "space_ip_train.h"
+#include "space_l2_train.h"
 #include "space_kendall.h"
 #include "bruteforce.h"
 #include "hnswalg.h"
