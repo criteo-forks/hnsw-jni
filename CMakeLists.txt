@@ -36,6 +36,6 @@ add_library(doctest INTERFACE)
 target_include_directories(doctest INTERFACE src/test/cpp/doctest.h)
 
 # Make test executable
-add_executable(tests_knn src/test/cpp/main.cpp src/test/cpp/knn_distance_test.cpp src/test/cpp/knn_index_test.cpp src/test/cpp/knn_search_test.cpp $<TARGET_OBJECTS:HNSWLIB_OBJ>)
+add_executable(tests_knn src/test/cpp/main.cpp src/test/cpp/knn_distance_test.cpp src/test/cpp/knn_index_test.cpp src/test/cpp/knn_search_test.cpp $<TARGET_OBJECTS:HNSWLIB_OBJ> src/test/cpp/float8_test.cpp)
 target_link_libraries(tests_knn doctest)
 add_test(NAME tests COMMAND $<TARGET_FILE:tests_knn>)

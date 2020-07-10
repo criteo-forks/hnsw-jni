@@ -86,6 +86,7 @@ namespace hnswlib {
 
 #include "space_l2.h"
 #include "float16.h"
+#include "float8.h"
 #include "encoding.h"
 #include "space_ip.h"
 #include "space_kendall.h"
