@@ -57,7 +57,7 @@ public:
         decode_func_float16 = hnswlib::get_fast_encode_func<uint16_t, float>(dim);
         encode_func_float16 = hnswlib::get_fast_encode_func<float, uint16_t>(dim);
         decode_func_float8 = hnswlib::get_fast_decode_trained_func(dim);
-        encode_func_float8 = hnswlib::encode_trained_vector;
+        encode_func_float8 = hnswlib::encode_trained_vector<float, uint8_t, hnswlib::encode_component, 1>;
     }
 
     void initNewIndex(const size_t maxElements, const size_t M, const size_t efConstruction, const size_t random_seed) {

@@ -20,7 +20,7 @@ static inline float get_random_float(float min, float max) {
 }
 
 static inline void to_float8(const std::vector<float> &src, std::vector<uint8_t> &dst, const hnswlib::TrainParams* params) {
-    hnswlib::encode_trained_vector(src.data(), dst.data(), params);
+    hnswlib::encode_trained_vector<float, uint8_t, hnswlib::encode_component, 1>(src.data(), dst.data(), params);
 }
 
 static inline void to_float32(const size_t dim, const std::vector<uint8_t> &src, std::vector<float> &dst, const hnswlib::TrainParams* params) {

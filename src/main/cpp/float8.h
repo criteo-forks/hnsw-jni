@@ -105,17 +105,22 @@ namespace hnswlib {
     // This method is called at index load time only so, doesn't require high performance
     // which is also quite hard to achieve using AVX only due to lack of specialized convert
     // instructions from uint8_t to float.
-    static inline void encode_trained_vector(const float* src, uint8_t* dst, const TrainParams* param_ptr) {
+    static inline void encode_component(const float* src, uint8_t *dst, const float* min, const float *diff) {
+        // TODO/OPT: align to the border values of  [0, 255] if less /greater
+        *dst = static_cast<uint8_t>(round((*src - *min) / *diff));
+    }
+
+    template<typename SRC, typename DST, void(*encode_func)(const SRC*, DST*, const float*, const float*), int step>
+    static inline void encode_trained_vector(const SRC* src, DST* dst, const TrainParams* param_ptr) {
         const auto *end = src + param_ptr->dim;
         auto min = param_ptr->min;
         auto diff = param_ptr->diff;
         while (src < end) {
-            // TODO/OPT: align to the border values of  [0, 255] if less /greater
-            *dst = static_cast<uint8_t>(round((*src - *min) / *diff));
-            src++;
-            dst++;
-            min++;
-            diff++;
+            encode_func(src, dst, min, diff);
+            src += step;
+            dst += step;
+            min += step;
+            diff += step;
         }
     }
 
@@ -128,18 +133,8 @@ namespace hnswlib {
         return *diff * *src + *min;
     }
 
-    static inline void decode_trained_vector(const uint8_t* src, float* dst, const TrainParams* param_ptr) {
-        const auto *end = src + param_ptr->dim;
-        auto min = param_ptr->min;
-        auto diff = param_ptr->diff;
-
-        while (src < end) {
-            *dst = load_component(src, min, diff);
-            src++;
-            dst++;
-            min++;
-            diff++;
-        }
+    static inline void encode_component(const uint8_t *src, float* dst, const float* min, const float *diff) {
+        *dst = load_component(src, min, diff);
     }
 
 #ifdef USE_AVX
@@ -160,28 +155,19 @@ namespace hnswlib {
     }
 
     // Decode F8 -> F32
-    static inline void decode_trained_vector_avx(const uint8_t* src, float* dst, const TrainParams* param_ptr) {
-        const auto *end = src + param_ptr->dim;
-        auto min = param_ptr->min;
-        auto diff = param_ptr->diff;
-        while (src < end) {
-            const auto f32 = load_component_avx(src, min, diff);
-            _mm256_storeu_ps(dst, f32);
-            src+=8;
-            dst+=8;
-            min+=8;
-            diff+=8;
-        }
+    static inline void encode_component_avx(const uint8_t *src, float* dst, const float* min, const float *diff) {
+        const auto f32 = load_component_avx(src, min, diff);
+        _mm256_storeu_ps(dst, f32);
     }
 
     static void decode_trained_vector_avx_residuals(const uint8_t* src, float* dst, const TrainParams* param_ptr) {
         const auto qty = param_ptr->dim;
         const auto qty8 = qty >> 3 << 3;
         TrainParams params8(param_ptr->min, param_ptr->diff, qty8, true);
-        decode_trained_vector_avx(src, dst, &params8);
+        encode_trained_vector<uint8_t, float, encode_component_avx, 8>(src, dst, &params8);
         const auto qty_left = qty - qty8;
         TrainParams params_left(param_ptr->min + qty8, param_ptr->diff + qty8, qty_left, true);
-        decode_trained_vector(src + qty8, dst + qty8, &params_left);
+        encode_trained_vector<uint8_t, float, encode_component, 1>(src + qty8, dst + qty8, &params_left);
     }
 #endif
 
@@ -200,40 +186,31 @@ namespace hnswlib {
     }
 
     // Decode F8 -> F32
-    static inline void decode_trained_vector_sse(const uint8_t* src, float* dst, const TrainParams* param_ptr) {
-        const auto *end = src + param_ptr->dim;
-        auto min = param_ptr->min;
-        auto diff = param_ptr->diff;
-        while (src < end) {
-            const auto f32 = load_component_sse(src, min, diff);
-            _mm_storeu_ps(dst, f32);
-            src+=4;
-            dst+=4;
-            min+=4;
-            diff+=4;
-        }
+    static inline void encode_component_sse(const uint8_t *src, float* dst, const float* min, const float *diff) {
+        const auto f32 = load_component_sse(src, min, diff);
+        _mm_storeu_ps(dst, f32);
     }
 
     static void decode_trained_vector_sse_residuals(const uint8_t* src, float* dst, const TrainParams* param_ptr) {
         const auto qty = param_ptr->dim;
         const auto qty4 = qty >> 2 << 2;
         TrainParams params8(param_ptr->min, param_ptr->diff, qty4, true);
-        decode_trained_vector_sse(src, dst, &params8);
+        encode_trained_vector<uint8_t, float, encode_component_sse, 4>(src, dst, &params8);
         const auto qty_left = qty - qty4;
         TrainParams params_left(param_ptr->min + qty4, param_ptr->diff + qty4, qty_left, true);
-        decode_trained_vector(src + qty4, dst + qty4, &params_left);
+        encode_trained_vector<uint8_t, float, encode_component, 1>(src + qty4, dst + qty4, &params_left);
     }
 #endif
 
     static inline
     DECODEFUNC<uint8_t, float, TrainParams> get_fast_decode_trained_func(size_t dim) {
-        auto func = decode_trained_vector;
+        auto func = encode_trained_vector<uint8_t, float, encode_component, 1>;
 #if defined(USE_SSE)
-        if (dim % 4 == 0) func = decode_trained_vector_sse;
+        if (dim % 4 == 0) func = encode_trained_vector<uint8_t, float, encode_component_sse, 4>;
         else if (dim > 4) func = decode_trained_vector_sse_residuals;
 #endif
 #if defined(USE_AVX)
-        if (dim % 8 == 0) func = decode_trained_vector_avx;
+        if (dim % 8 == 0) func = encode_trained_vector<uint8_t, float, encode_component_avx, 8>;
         else if (dim > 8) func = decode_trained_vector_avx_residuals;
 #endif
         return func;

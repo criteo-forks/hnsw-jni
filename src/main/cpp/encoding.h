@@ -3,7 +3,6 @@
 #include "float16.h"
 
 namespace hnswlib {
-
     static inline float load_component(const float *component) {
         return *component;
     }
@@ -22,15 +21,14 @@ namespace hnswlib {
         *dst = decode_fp16(*src);
     }
 
-    // Encode/Decode from SRC to DST
-    template<typename SRC, typename DST>
+    template<typename SRC, typename DST, void(*encode_func)(const SRC*, DST*), int step>
     static void
     encode_decode_vector(const SRC* src, DST* dst, const size_t* qty_ptr) {
         const SRC *end = src + *qty_ptr;
         while (src < end) {
-            encode_component(src, dst);
-            src++;
-            dst++;
+            encode_func(src, dst);
+            src += step;
+            dst += step;
         }
     }
 
@@ -58,27 +56,15 @@ namespace hnswlib {
         _mm256_storeu_ps(dst, f32);
     }
 
-    // Encode/Decode from SRC to DST
-    template<typename SRC, typename DST>
-    static void
-    encode_decode_vector_avx(const SRC* src, DST* dst, const size_t* qty_ptr) {
-        const SRC *end = src + *qty_ptr;
-        while (src < end) {
-            encode_component_avx(src, dst);
-            src += 8;
-            dst += 8;
-        }
-    }
-
     template<typename SRC, typename DST>
     static void
     encode_decode_vector_avx_residuals(const SRC* src, DST* dst, const size_t* qty_ptr) {
         const auto qty = *qty_ptr;
         const auto qty8 = qty >> 3 << 3;
-        encode_decode_vector_avx(src, dst, &qty8);
+        encode_decode_vector<SRC, DST, encode_component_avx, 8>(src, dst, &qty8);
 
         const auto qty_left = qty - qty8;
-        encode_decode_vector(src + qty8, dst + qty8, &qty_left);
+        encode_decode_vector<SRC, DST, encode_component, 1>(src + qty8, dst + qty8, &qty_left);
     }
 #endif
 
@@ -108,36 +94,25 @@ namespace hnswlib {
 
     template<typename SRC, typename DST>
     static void
-    encode_decode_vector_sse(const SRC* src, DST* dst, const size_t* qty_ptr) {
-        const SRC *end = src + *qty_ptr;
-        while (src < end) {
-            encode_component_sse(src, dst);
-            src += 4;
-            dst += 4;
-        }
-    }
-
-    template<typename SRC, typename DST>
-    static void
     encode_decode_vector_sse_residuals(const SRC* src, DST* dst, const size_t* qty_ptr) {
         const auto qty = *qty_ptr;
         const auto qty4 = qty >> 2 << 2;
-        encode_decode_vector_sse(src, dst, &qty4);
+        encode_decode_vector<SRC, DST, encode_component_sse, 4>(src, dst, &qty4);
         const auto qty_left = qty - qty4;
-        encode_decode_vector(src + qty4, dst + qty4, &qty_left);
+        encode_decode_vector<SRC, DST, encode_component, 1>(src + qty4, dst + qty4, &qty_left);
     }
 #endif
 
     template<typename SRC, typename DST>
     static inline
     DECODEFUNC<SRC, DST, size_t> get_fast_encode_func(size_t dim) {
-        auto func = encode_decode_vector<SRC, DST>;
+        auto func = encode_decode_vector<SRC, DST, encode_component, 1>;
 #if defined(USE_SSE)
-        if (dim % 4 == 0) func = encode_decode_vector_sse<SRC, DST>;
+        if (dim % 4 == 0) func = encode_decode_vector<SRC, DST, encode_component_sse, 4>;
         else if (dim > 4) func = encode_decode_vector_sse_residuals<SRC, DST>;
 #endif
 #if defined(USE_AVX)
-        if (dim % 8 == 0) func = encode_decode_vector_avx<SRC, DST>;
+        if (dim % 8 == 0) func = encode_decode_vector<SRC, DST, encode_component_avx, 8>;
         else if (dim > 8) func = encode_decode_vector_avx_residuals<SRC, DST>;
 #endif
         return func;
