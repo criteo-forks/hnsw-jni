@@ -137,22 +137,6 @@ public:
         return appr_alg->getDataByInternalId(label_c);
     }
 
-    inline void decodeFloat16(const uint16_t* src, float* dst) {
-        decode_func_float16(src, dst, static_cast<const size_t*>(space->get_dist_func_param()));
-    }
-
-    inline void encodeFloat16(const float* src, uint16_t* dst) {
-        encode_func_float16(src, dst, static_cast<const size_t*>(space->get_dist_func_param()));
-    }
-
-    inline void decodeFloat8(const uint8_t* src, float* dst) {
-        decode_func_float8(src, dst, static_cast<const hnswlib::TrainParams*>(space->get_dist_func_param()));
-    }
-
-    inline void encodeFloat8(const float* src, uint8_t* dst) {
-        encode_func_float8(src, dst, static_cast<const hnswlib::TrainParams*>(space->get_dist_func_param()));
-    }
-
     std::vector<size_t> getLabels() {
         std::vector<size_t> labels;
         for(auto & iter : *label_lookup_) {
@@ -175,13 +159,29 @@ public:
             return item;
         }
         encoded_vector.resize(space->get_data_size());
+        return encode(item, reinterpret_cast<void*>(encoded_vector.data()));
+    }
+
+    void* encode(dist_t* src, void* dst) {
+        const auto param = space->get_dist_func_param();
         switch (precision) {
-            case Float16: encodeFloat16(static_cast<dist_t *>(item), reinterpret_cast<uint16_t *>(encoded_vector.data())); break;
-            case Float8:  encodeFloat8(static_cast<dist_t *>(item), reinterpret_cast<uint8_t *>(encoded_vector.data())); break;
+            case Float32: return src;
+            case Float16: encode_func_float16(src, reinterpret_cast<uint16_t *>(dst), static_cast<const size_t*>(param)); return dst;
+            case Float8:  encode_func_float8(src, reinterpret_cast<uint8_t *>(dst), static_cast<const hnswlib::TrainParams*>(param)); return dst;
             default: throw std::runtime_error("Unsupported precision " + std::to_string(precision));
         }
-        return encoded_vector.data();
     }
+
+    dist_t* decode(void* src, dist_t* dst) {
+        const auto param = space->get_dist_func_param();
+        switch (precision) {
+            case Float32: return static_cast<dist_t*>(src);
+            case Float16: decode_func_float16(reinterpret_cast<uint16_t *>(src), dst, static_cast<const size_t*>(param)); return dst;
+            case Float8:  decode_func_float8(reinterpret_cast<uint8_t *>(src), dst, static_cast<const hnswlib::TrainParams*>(param)); return dst;
+            default: throw std::runtime_error("Unsupported precision " + std::to_string(precision));
+        }
+    }
+
     /**
      * `knnQuery` - runs knn search on the query vector and returns k closest neighbours with
      * distance from query and pointer to each result.

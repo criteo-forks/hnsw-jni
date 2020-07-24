@@ -60,6 +60,12 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_addItem(JNIEnv *env, jclass 
     hnsw->addItem(elements_data, (size_t) label);
 }
 
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_addItemBuffer(JNIEnv *env, jclass jobj, jlong pointer, jobject vector_buff, jlong label) {
+    auto hnsw = (Index<float> *)pointer;
+    auto vector_ptr = static_cast<float*>(env->GetDirectBufferAddress(vector_buff));
+    hnsw->addItem(vector_ptr, (size_t) label);
+}
+
 JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_getNbItems(JNIEnv *env, jclass jobj, jlong pointer) {
     return ((Index<float> *)pointer)->getNbItems();
 }
@@ -75,18 +81,18 @@ JNIEXPORT jobject JNICALL Java_com_criteo_hnsw_HnswLib_getItem(JNIEnv *env, jcla
     }
 }
 
-JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_decodeFloat16(JNIEnv *env, jclass jobj, jlong pointer, jobject src_buffer, jobject dst_buffer) {
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_decode(JNIEnv *env, jclass jobj, jlong pointer, jobject src_buffer, jobject dst_buffer) {
     auto hnsw = (Index<float> *)pointer;
-    auto src = static_cast<uint16_t*>(env->GetDirectBufferAddress(src_buffer));
+    auto src = static_cast<void*>(env->GetDirectBufferAddress(src_buffer));
     auto dst = static_cast<float*>(env->GetDirectBufferAddress(dst_buffer));
-    hnsw->decodeFloat16(src, dst);
+    hnsw->decode(src, dst);
 }
 
-JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_encodeFloat16(JNIEnv *env, jclass jobj, jlong pointer, jobject src_buffer, jobject dst_buffer) {
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_encode(JNIEnv *env, jclass jobj, jlong pointer, jobject src_buffer, jobject dst_buffer) {
     auto hnsw = (Index<float> *)pointer;
     auto src = static_cast<float*>(env->GetDirectBufferAddress(src_buffer));
-    auto dst = static_cast<uint16_t*>(env->GetDirectBufferAddress(dst_buffer));
-    hnsw->encodeFloat16(src, dst);
+    auto dst = static_cast<void*>(env->GetDirectBufferAddress(dst_buffer));
+    hnsw->encode(src, dst);
 }
 
 JNIEXPORT jint JNICALL Java_com_criteo_hnsw_HnswLib_search(JNIEnv *env, jclass jobj, jlong pointer, jobject query_buffer, jlong k, jobject items_result_buffer, jobject distance_result_buffer, jobjectArray result_vectors, jboolean bruteforce_search) {

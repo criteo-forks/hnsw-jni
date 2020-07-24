@@ -3,7 +3,6 @@ package com.criteo.hnsw;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.util.HashMap;
@@ -27,11 +26,9 @@ public class HnswLibTests {
     private long nbItems = 12;
     private int M = 16;
     private int efConstruction = 200;
-    private Decoder decoderFloat16 = Decoder.create(dimension, Precision.Float16);
-    private Decoder decoderFloat32 = Decoder.create(dimension, Precision.Float32);
 
     @Test
-    public void create_indices_save_and_load() throws IOException {
+    public void create_indices_save_and_load() throws Exception {
         Map<HnswIndex, Function<Integer, Float>> indices = new HashMap<HnswIndex, Function<Integer, Float>>() {{
             // Hnsw - float32
             put(HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, false), getValueById);
@@ -59,30 +56,30 @@ public class HnswLibTests {
 
             assertEquals(nbItems, index.getNbItems());
 
-            double epsilon = epsilon32;
-            Decoder decoder = decoderFloat32;
-            if (index.getPrecision() == Precision.Float16Val) {
-                epsilon = epsilon16;
-                decoder = decoderFloat16;
+            double epsilon;
+            switch (index.getPrecision()) {
+                case (Precision.Float16Val): epsilon = epsilon16; break;
+                default: epsilon = epsilon32; break;
             }
-            assertAllVectorsMatchExpected(index, dimension, getValueById, decoder, epsilon);
+            assertAllVectorsMatchExpected(index, dimension, getValueById, epsilon);
             index.save(indexPathStr);
 
             index.load(indexPathStr);
-            assertAllVectorsMatchExpected(index, dimension, getValueById, decoder, epsilon);
+            assertAllVectorsMatchExpected(index, dimension, getValueById, epsilon);
 
-            // Create float16 Index from either float32 or from float16 format
+            // Create float16 Index from either float32 or float16 format
             HnswIndex index16 = HnswIndex.create(index.getMetric(), dimension, Precision.Float16Val, index.isBruteforce());
             index16.load(indexPathStr);
-            assertAllVectorsMatchExpected(index16, dimension, getValueById, decoderFloat16, epsilon16);
+            assertAllVectorsMatchExpected(index16, dimension, getValueById, epsilon16);
 
             index16.unload();
             index.unload();
         }
     }
 
+
     @Test
-    public void create_bruteforce_indices_save_and_load() throws IOException {
+    public void create_bruteforce_indices_save_and_load() throws Exception {
         Map<HnswIndex, Function<Integer, Float>> indices = new HashMap<HnswIndex, Function<Integer, Float>>() {{
             put(HnswIndex.create(Metrics.Euclidean, dimension, Precision.Float32, true), getValueById);
             put(HnswIndex.create(Metrics.DotProduct, dimension, Precision.Float32, true), getValueById);
@@ -102,11 +99,11 @@ public class HnswLibTests {
 
             assertEquals(nbItems, index.getNbItems());
 
-            assertAllVectorsMatchExpected(index, dimension, getValueById, decoderFloat32, delta);
+            assertAllVectorsMatchExpected(index, dimension, getValueById, delta);
             index.save(indexPathStr);
 
             index.load(indexPathStr);
-            assertAllVectorsMatchExpected(index, dimension, getValueById, decoderFloat32, delta);
+            assertAllVectorsMatchExpected(index, dimension, getValueById, delta);
 
             index.unload();
         }
@@ -241,7 +238,7 @@ public class HnswLibTests {
         index.initNewIndex(nbItems, M, efConstruction, randomSeed);
         populateIndex(index, getValueById, nbItems, dimension);
 
-        FloatByteBuf query = decoderFloat16.decode(index.getItem(0));
+        FloatByteBuf query = index.getItemDecoded(0);
         KnnResult results = index.search(query, k);
         assertEquals(k, results.resultCount);
 
@@ -249,13 +246,13 @@ public class HnswLibTests {
         assertEquals(0, results.resultItems[0]);
         assertEquals(0, results.resultDistances[0], 1E-3);
 
-        assertAllEqual(query, decoderFloat16.decode(results.resultVectors[0]), dimension);
+        assertAllEqual(query, index.decode(results.resultVectors[0]), dimension);
         for (int i = 1; i < k; i++) {
             long found = results.resultItems[i];
             float distance = results.resultDistances[i];
             assertEquals(k - i, found);
             assertEquals(dimension * (float) Math.pow(getValueById.apply(k - i), 2), distance, 6E-3);
-            assertAllEqual(decoderFloat16.decode(index.getItem(found)), decoderFloat16.decode(results.resultVectors[i]), dimension);
+            assertAllEqual(index.getItemDecoded(found), index.decode(results.resultVectors[i]), dimension);
         }
 
         index.unload();
@@ -345,13 +342,16 @@ public class HnswLibTests {
         }
     }
 
-    private void assertAllVectorsMatchExpected(HnswIndex index, int size, Function<Integer, Float> getExpectedValue, Decoder decoder, double epsilon) {
+    private void assertAllVectorsMatchExpected(HnswIndex index, int size, Function<Integer, Float> getExpectedValue, double epsilon) throws Exception {
         long[] ids = index.getIds();
         for (long l : ids) {
             int id = (int) l;
             float expectedValue = getExpectedValue.apply(id);
-            FloatByteBuf item = decoder.decode(index.getItem(id));
-            assertAllValuesEqual(item, size, expectedValue, epsilon);
+            System.out.println("Precision: " + Precision.getStr(index.getPrecision()));
+            System.out.println("Expected: " + expectedValue + "; label: " + l);
+            try(FloatByteBuf item = index.getItemDecoded(id)) {
+                assertAllValuesEqual(item, size, expectedValue, epsilon);
+            }
         }
     }
 

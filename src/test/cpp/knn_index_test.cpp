@@ -60,13 +60,9 @@ TEST_CASE("Serialize and deserialize indices") {
                     }
                     auto item_ptr = loaded_index->getItem(id);
                     std::vector<float> item(dim);
-                    auto epsilon = epsilon32;
-                    if (loaded_index->precision == Float16) {
-                        loaded_index->decodeFloat16((uint16_t *) item_ptr, item.data());
-                        item_ptr = item.data();
-                        epsilon = epsilon16;
-                    }
-                    const auto *item_ptr_float32 = (float *) item_ptr;
+                    auto epsilon = loaded_index->precision == Float32? epsilon32 : epsilon16;
+                    item_ptr = loaded_index->decode(item_ptr, item.data());
+                    const auto *item_ptr_float32 = reinterpret_cast<float *>(item_ptr);
                     for (size_t i = 0; i < dim; i++) {
                         auto actual = item_ptr_float32[i];
                         REQUIRE(expected == doctest::Approx(actual).epsilon(epsilon));
@@ -133,15 +129,15 @@ TEST_CASE("Deserialize Float32 as Float8 indices") {
                 REQUIRE_EQ(nbItems, loaded_index->getNbItems());
                 for (size_t id = 0; id < nbItems; id++) {
                     const auto expected = vectors[id];
-                    auto item_ptr = loaded_index->getItem(id);
-                    std::vector<float> item(dim);
-                    loaded_index->decodeFloat8((uint8_t *) item_ptr, item.data());
+                    const auto item = loaded_index->getItem(id);
+                    std::vector<float> item_v(dim);
+                    const auto item_ptr = loaded_index->decode(item, item_v.data());
                     for (size_t i = 0; i < dim; i++) {
                         CAPTURE(expected[i]);
-                        CAPTURE(item[i]);
+                        CAPTURE(item_ptr[i]);
                         CAPTURE(range.min_[i]);
                         CAPTURE(range.max_[i]);
-                        REQUIRE(expected[i] == doctest::Approx(item[i]).epsilon(epsilon));
+                        REQUIRE(expected[i] == doctest::Approx(item_ptr[i]).epsilon(epsilon));
                     }
                 }
             }

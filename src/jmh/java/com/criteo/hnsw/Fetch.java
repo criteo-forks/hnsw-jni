@@ -5,12 +5,10 @@ import org.openjdk.jmh.annotations.*;
 public class Fetch extends BaseBench  {
     public long randomLabel;
     public HnswIndex index;
-    public Decoder decoder;
 
     @Setup(Level.Trial)
     public void globalSetup() {
         index = createIndex(metric, precision);
-        decoder = Decoder.create(index.getDimension(), precision);
     }
 
     @Setup(Level.Invocation)
@@ -24,8 +22,7 @@ public class Fetch extends BaseBench  {
     }
 
     @Benchmark
-    public FloatByteBuf getAndDecode() {
-        FloatByteBuf buf = index.getItem(randomLabel);
-        return decoder.decode(buf);
+    public FloatByteBuf getDecoded() {
+        return index.getItemDecoded(randomLabel);
     }
 }

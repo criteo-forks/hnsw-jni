@@ -1,9 +1,12 @@
 package com.criteo.hnsw;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 
 public class HnswIndex {
     private long pointer;
+    private int dimension;
+    private int precision;
     private Boolean isBruteforce;
 
     public static HnswIndex create(String metric, int dimension) {
@@ -24,9 +27,12 @@ public class HnswIndex {
         long pointer = HnswLib.create(dimension, metricVal, precisionVal);
         return new HnswIndex(pointer, isBruteforce);
     }
+
     public HnswIndex(long pointer, Boolean isBruteforce) {
         this.pointer = pointer;
         this.isBruteforce = isBruteforce;
+        this.precision = HnswLib.getPrecision(pointer);
+        this.dimension = HnswLib.getDimension(pointer);
     }
 
     public long getPointer() {
@@ -60,6 +66,10 @@ public class HnswIndex {
 
     public void addItem(float[] vector, long id) {
         HnswLib.addItem(pointer, vector, id);
+    }
+
+    public void addItem(FloatBuffer vector, long id) {
+        HnswLib.addItemBuffer(pointer, vector, id);
     }
 
     public void save(String path) {
@@ -100,6 +110,10 @@ public class HnswIndex {
             return null;
         }
         return FloatByteBuf.wrappedBuffer(buffer);
+    }
+
+    public FloatByteBuf getItemDecoded(long label) {
+        return decode(getItem(label));
     }
 
     public KnnResult search(FloatByteBuf query, int k) throws Exception {
@@ -146,6 +160,29 @@ public class HnswIndex {
 
     public float getDistanceBetweenLabels(long label1, long label2) {
         return HnswLib.getDistanceBetweenLabels(pointer, label1, label2);
+    }
+
+    public FloatByteBuf decode(FloatByteBuf src) {
+        if (src == null) {
+            return null;
+        }
+        if (precision == Precision.Float32Val) {
+            return src;
+        }
+        FloatByteBuf decoded = new FloatByteBuf(dimension);
+        HnswLib.decode(pointer, src.getNioBuffer(), decoded.getNioBuffer());
+        decoded.writerIndex(dimension); // Since memory update happens in native, we need to tell JVM what is new position
+        return decoded;
+    }
+
+    public ByteBuffer encode(ByteBuffer src) {
+        if (precision == Precision.Float32Val) {
+            return src;
+        }
+        int size_per_component = Precision.getBytesPerComponent(precision);
+        ByteBuffer dst = ByteBuffer.allocateDirect(dimension * size_per_component);
+        HnswLib.encode(pointer, src, dst);
+        return dst;
     }
 
 }

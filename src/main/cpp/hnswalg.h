@@ -590,15 +590,17 @@ namespace hnswlib {
                         // Skip label
                         input.seekg(sizeof(labeltype), input.cur);
                     }
+
                     input.clear();
                     input.seekg(pos,input.beg);
+
+                    dist_func_param_ = s->get_dist_func_param();
                 }
                 // Rewriting offsets per new size
                 label_offset_ = size_links_level0_ + data_size_;
                 size_data_per_element_ = size_data_per_element_ - src_data_size + data_size_;
                 data_level0_memory_ = (char *) malloc(cur_element_count * size_data_per_element_);
 
-                const auto param = static_cast<PARAM*>(s->get_dist_func_param());
                 auto data_ptr = data_level0_memory_;
                 for(size_t i = 0; i < cur_element_count; i++) {
                     // Reading links
@@ -606,7 +608,7 @@ namespace hnswlib {
                     data_ptr += offsetData_;
                     // Reading vector
                     input.read(src_buffer.data(), src_data_size);
-                    decoder_func((const SRC *) src_buffer.data(), (DST *) data_ptr, param);
+                    decoder_func((const SRC *) src_buffer.data(), (DST *) data_ptr, static_cast<PARAM*>(dist_func_param_));
                     data_ptr += data_size_;
                     // Reading label
                     input.read(data_ptr, sizeof(labeltype));

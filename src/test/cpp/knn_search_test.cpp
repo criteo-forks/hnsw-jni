@@ -28,17 +28,13 @@ TEST_CASE("Search Euclidean in the index with <= K items should return all items
                 hnsw.addItem(item.data(), id);
             }
             const auto query_label = 0;
-            const auto query = hnsw.getItem(0);
-            auto query_ptr = static_cast<float*>(query);
+            auto query = hnsw.getItem(0);
             std::vector<float> decoded_query(dim);
-            if(precision == Float16) {
-                hnsw.decodeFloat16(static_cast<uint16_t*>(query), decoded_query.data());
-                query_ptr = decoded_query.data();
-            }
+            query = hnsw.decode(query, decoded_query.data());
             std::vector<size_t> labels(K);
             std::vector<float> distances(K);
             std::vector<float*> pointers(K);
-            const auto nb_results = hnsw.knnQuery(query_ptr, labels.data(), distances.data(), pointers.data(), K);
+            const auto nb_results = hnsw.knnQuery(static_cast<float*>(query), labels.data(), distances.data(), pointers.data(), K);
             const auto distance_to_self = distances[0];
             const auto self = labels[0];
             REQUIRE_EQ(0.0f, distance_to_self);
@@ -84,17 +80,13 @@ TEST_CASE("Search InnerProduct in the index with <= K items should return all it
                 hnsw.addItem(item.data(), id);
             }
             const auto query_label = 0;
-            const auto query = hnsw.getItem(0);
-            auto query_ptr = static_cast<float*>(query);
+            auto query = hnsw.getItem(0);
             std::vector<float> decoded_query(dim);
-            if(precision == Float16) {
-                hnsw.decodeFloat16(static_cast<uint16_t*>(query), decoded_query.data());
-                query_ptr = decoded_query.data();
-            }
+            query = hnsw.decode(static_cast<char*>(query), decoded_query.data());
             std::vector<size_t> labels(K);
             std::vector<float> distances(K);
             std::vector<float*> pointers(K);
-            const auto nb_results = hnsw.knnQuery(query_ptr, labels.data(), distances.data(), pointers.data(), K);
+            const auto nb_results = hnsw.knnQuery(static_cast<float*>(query), labels.data(), distances.data(), pointers.data(), K);
             const auto distance_to_self = distances[0];
             const auto self = labels[0];
             REQUIRE_EQ(1.f - dim * 1.f, distance_to_self);

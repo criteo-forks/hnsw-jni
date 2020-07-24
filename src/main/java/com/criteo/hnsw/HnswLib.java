@@ -52,15 +52,17 @@ public class HnswLib {
 
     public static native void addItem(long pointer, float[] vector, long label);
 
+    public static native void addItemBuffer(long pointer, FloatBuffer vector, long label);
+
     public static native long getNbItems(long pointer);
 
     public static native ByteBuffer getItem(long pointer, long label);
 
     public static native int search(long pointer, FloatBuffer query_buffer, long k, LongBuffer items_result_buffer, FloatBuffer distance_result_buffer, ByteBuffer[] result_vectors, boolean bruteforceSearch);
 
-    public static native boolean decodeFloat16(long pointer, ByteBuffer src, ByteBuffer dst);
+    public static native boolean decode(long pointer, ByteBuffer src, ByteBuffer dst);
 
-    public static native boolean encodeFloat16(long pointer, ByteBuffer src, ByteBuffer dst);
+    public static native boolean encode(long pointer, ByteBuffer src, ByteBuffer dst);
 
     public static native float getDistanceBetweenLabels(long index, long label1, long label2);
 
