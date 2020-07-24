@@ -102,7 +102,6 @@ namespace hnswlib {
 
         void saveIndex(const std::string &location) {
             std::ofstream output(location, std::ios::binary);
-            std::streampos position;
 
             writeBinaryPOD(output, maxelements_);
             writeBinaryPOD(output, size_per_element_);
@@ -113,15 +112,60 @@ namespace hnswlib {
         }
 
         void loadIndex(const std::string &location, SpaceInterface<dist_t> *s) {
+            loadAndDecode<void, void, size_t>(location, s, nullptr);
+        }
+
+        template<typename SRC, typename DST, typename PARAM>
+        void loadAndDecode(const std::string &location, SpaceInterface<dist_t> *s, DECODEFUNC<SRC, DST, PARAM> decoder_func) {
             std::ifstream input(location, std::ios::binary);
-            std::streampos position;
 
             readBinaryPOD(input, maxelements_);
             readBinaryPOD(input, size_per_element_);
             readBinaryPOD(input, cur_element_count);
 
-            data_ = (char *) malloc(maxelements_ * size_per_element_);
-            input.read(data_, maxelements_ * size_per_element_);
+
+            auto pos = input.tellg();
+            // Inferring old data_size
+            const auto src_data_size = size_per_element_ - sizeof(labeltype);
+            // Either no decoder or same size of vectors
+            if (decoder_func == nullptr || data_size_ == src_data_size) {
+                data_ = (char *) malloc(cur_element_count * size_per_element_);
+                input.read(data_, cur_element_count * size_per_element_);
+            }
+            else {
+                std::vector<char> src_buffer(src_data_size);
+                if (s->needs_initialization()) {
+                    for(size_t i = 0; i < cur_element_count; i++) {
+                        // Read and train on source vector
+                        input.read(src_buffer.data(), src_data_size);
+                        s->train(reinterpret_cast<const float *>(src_buffer.data()));
+                        // Skip label
+                        input.seekg(sizeof(labeltype), input.cur);
+                    }
+
+                    input.clear();
+                    input.seekg(pos,input.beg);
+
+                    // Reset internal cached value of dist_func_param_ which has change it's state after training
+                    alg_ = std::unique_ptr<BruteforceSearchAlg<dist_t>>(new BruteforceSearchAlg<dist_t>(s));
+                }
+                // Rewriting offsets per new size
+                size_per_element_ = data_size_ + sizeof(labeltype);
+                data_ = (char *) malloc(cur_element_count * size_per_element_);
+
+                auto data_ptr = data_;
+                const auto params = s->get_dist_func_param();
+                for(size_t i = 0; i < cur_element_count; i++) {
+                    // Reading vector
+                    input.read(src_buffer.data(), src_data_size);
+                    decoder_func((const SRC *) src_buffer.data(), (DST *) data_ptr, static_cast<PARAM*>(params));
+                    data_ptr += data_size_;
+                    // Reading label
+                    input.read(data_ptr, sizeof(labeltype));
+                    data_ptr += sizeof(labeltype);
+                }
+            }
+
             input.close();
 
             for (size_t i = 0; i < cur_element_count; i++) {

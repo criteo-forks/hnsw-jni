@@ -66,8 +66,27 @@ JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_addItemBuffer(JNIEnv *env, j
     hnsw->addItem(vector_ptr, (size_t) label);
 }
 
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_trainEncodingSpace(JNIEnv *env, jclass jobj, jlong pointer, jfloatArray vector) {
+    auto hnsw = (Index<float> *)pointer;
+    auto dim = hnsw->dim;
+    std::vector<float> elements(dim);
+    auto elements_data = elements.data();
+    env->GetFloatArrayRegion(vector, 0, dim, elements_data);
+    hnsw->space->train(elements_data);
+}
+
+JNIEXPORT void JNICALL Java_com_criteo_hnsw_HnswLib_trainEncodingSpaceBuffer(JNIEnv *env, jclass jobj, jlong pointer, jobject vector_buff) {
+    auto hnsw = (Index<float> *)pointer;
+    auto vector_ptr = static_cast<float*>(env->GetDirectBufferAddress(vector_buff));
+    hnsw->space->train(vector_ptr);
+}
+
 JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_getNbItems(JNIEnv *env, jclass jobj, jlong pointer) {
     return ((Index<float> *)pointer)->getNbItems();
+}
+
+JNIEXPORT jlong JNICALL Java_com_criteo_hnsw_HnswLib_encodingNeedsTraining(JNIEnv *env, jclass jobj, jlong pointer) {
+    return ((Index<float> *)pointer)->space->needs_initialization();
 }
 
 JNIEXPORT jobject JNICALL Java_com_criteo_hnsw_HnswLib_getItem(JNIEnv *env, jclass jobj, jlong pointer, jlong label) {

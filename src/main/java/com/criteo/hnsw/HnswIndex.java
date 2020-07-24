@@ -185,4 +185,16 @@ public class HnswIndex {
         return dst;
     }
 
+    public boolean needsTraining() {
+        return HnswLib.encodingNeedsTraining(pointer);
+    }
+
+    public void trainEncodingSpace(float[] vector) {
+        HnswLib.trainEncodingSpace(pointer, vector);
+    }
+
+    public void trainEncodingSpace(FloatBuffer vector) {
+        HnswLib.trainEncodingSpaceBuffer(pointer, vector);
+    }
+
 }

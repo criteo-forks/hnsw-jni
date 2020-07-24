@@ -188,6 +188,7 @@ namespace hnswlib {
         DISTFUNC<float> fstdist_search_func_;
         size_t dim_;
         MinMaxRange range_per_component;
+        TrainParams params = TrainParams(dim_);
 
     public:
         explicit InnerProductTrainedSpace(size_t dim)
@@ -232,14 +233,11 @@ namespace hnswlib {
 
         void train(const float* vectors) override {
             range_per_component.add(vectors);
+            range_per_component.update_trained_params<TCOMPR>(params);
         }
 
         void *get_dist_func_param() override {
-            return range_per_component.get_trained_params<TCOMPR>();
-        }
-
-        void initialize_params(const void* range_ptr) override {
-            range_per_component = *static_cast<const MinMaxRange*>(range_ptr);
+            return &params;
         }
 
         ~InnerProductTrainedSpace() override = default;

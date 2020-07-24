@@ -135,6 +135,8 @@ namespace hnswlib {
         const size_t data_size_;
         size_t dim_;
         MinMaxRange range_per_component;
+        TrainParams params = TrainParams(dim_);
+
     public:
         explicit L2TrainedSpace(size_t dim)
         : data_size_(dim * sizeof(TCOMPR))
@@ -179,14 +181,11 @@ namespace hnswlib {
 
         void train(const float* vectors) override {
             range_per_component.add(vectors);
+            range_per_component.update_trained_params<TCOMPR>(params);
         }
 
         void *get_dist_func_param() override {
-            return range_per_component.get_trained_params<TCOMPR>();
-        }
-
-        void initialize_params(const void* range_ptr) override {
-            range_per_component = *static_cast<const MinMaxRange*>(range_ptr);
+            return &params;
         }
 
         ~L2TrainedSpace() override = default;

@@ -43,15 +43,15 @@ TEST_CASE("MinMaxRange tests") {
         for (auto &row: data) {
             range.add(row.data());
         }
-        const auto params = range.get_trained_params<uint8_t>();
+        auto params = hnswlib::TrainParams(dim);
+        range.update_trained_params<uint8_t>(params);
         for (int i = 0; i < dim; i++) {
             CAPTURE(i);
             CAPTURE(expected_min[i]);
             CAPTURE(expected_diff[i]);
-            REQUIRE_EQ(expected_min[i], params->min[i]);
-            REQUIRE_EQ(expected_diff[i], params->diff[i]);
+            REQUIRE_EQ(expected_min[i], params.min[i]);
+            REQUIRE_EQ(expected_diff[i], params.diff[i]);
         }
-        delete params;
     }
 }
 
@@ -66,11 +66,12 @@ TEST_CASE("Float8 encoding-decoding on small vectors (1 - 16)") {
         hnswlib::MinMaxRange range(dim);
         range.add(min.data());
         range.add(max.data());
-        const auto params = range.get_trained_params<uint8_t>();
+        auto params = hnswlib::TrainParams(dim);
+        range.update_trained_params<uint8_t>(params);
         std::vector<uint8_t> a_f8(dim);
-        to_float8(a, a_f8, params);
+        to_float8(a, a_f8, &params);
         std::vector<float> a_f32(dim);
-        to_float32(dim, a_f8, a_f32, params);
+        to_float32(dim, a_f8, a_f32, &params);
         for (auto i = 0; i < dim; i++) {
             auto actual = a_f32[i];
             auto expected = a[i];
@@ -102,11 +103,12 @@ TEST_CASE("Float8 encoding-decoding on large vectors") {
             a[i] = get_random_float(min[i], max[i]);
         }
         hnswlib::MinMaxRange range(min, max);
-        const auto params = range.get_trained_params<uint8_t>();
+        auto params = hnswlib::TrainParams(dim);
+        range.update_trained_params<uint8_t>(params);
         std::vector<uint8_t> a_f8(dim);
-        to_float8(a, a_f8, params);
+        to_float8(a, a_f8, &params);
         std::vector<float> a_f32(dim);
-        to_float32(dim, a_f8, a_f32, params);
+        to_float32(dim, a_f8, a_f32, &params);
         for(int i = 0; i < dim; i++) {
             auto actual = a_f32[i];
             auto expected = a[i];

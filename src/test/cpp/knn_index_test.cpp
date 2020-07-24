@@ -113,7 +113,8 @@ TEST_CASE("Deserialize Float32 as Float8 indices") {
 
             // Loading as float8 providing range explicitly
             auto hnsw_float8_explicit = Index<float>(distance, dim, Float8);
-            hnsw_float8_explicit.space->initialize_params(&range);
+            hnsw_float8_explicit.space->train(range.min_.data());
+            hnsw_float8_explicit.space->train(range.max_.data());
             hnsw_float8_explicit.loadIndex(indexPath);
 
             // Loading as float8 without range

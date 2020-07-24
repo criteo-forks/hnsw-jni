@@ -68,8 +68,6 @@ namespace hnswlib {
 
         virtual void train(const float* vectors) {}
 
-        virtual void initialize_params(const void*) {}
-
         virtual void *get_dist_func_param() = 0;
 
         virtual ~SpaceInterface() {}

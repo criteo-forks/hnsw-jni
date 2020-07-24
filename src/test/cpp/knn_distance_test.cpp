@@ -247,8 +247,8 @@ TEST_CASE ("Check Inner Product distance computation on large vectors") {
         REQUIRE(is_approx_equal(result16, expected_distance, epsilon16));
 
         auto space8 = hnswlib::InnerProductTrainedSpace<uint8_t>(dim);
-        const auto range = hnswlib::MinMaxRange(min, max);
-        space8.initialize_params(&range);
+        space8.train(min.data());
+        space8.train(max.data());
         const auto params = static_cast<hnswlib::TrainParams*>(space8.get_dist_func_param());
         std::vector<uint8_t> a_f8(dim), b_f8(dim);
         to_float8(a, a_f8, params);

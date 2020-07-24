@@ -9,14 +9,13 @@ namespace hnswlib {
     struct TrainParams {
         const size_t dim;
         const float* min;
-        const float* diff;
+        float* diff;
         const bool is_copy;
 
-        explicit TrainParams(const float* min, const float* diff, const size_t dim, const bool is_copy=false)
+        explicit TrainParams(const float* min, float* diff, const size_t dim, const bool is_copy=false)
         : dim(dim), min(min), diff(diff), is_copy(is_copy) {}
 
-        explicit TrainParams(const std::vector<float> &min_v, const std::vector<float> &diff_v)
-        : dim(min_v.size()), is_copy(false) {
+        explicit TrainParams(const int dim): dim(dim), is_copy(false) {
             const auto data_size = sizeof(float) * dim;
             void *min_ptr, *diff_ptr;
             if (
@@ -25,9 +24,6 @@ namespace hnswlib {
             ) {
                 throw std::runtime_error("Couldn't allocate TrainParams buffers");
             }
-
-            memcpy(min_ptr, min_v.data(), data_size);
-            memcpy(diff_ptr, diff_v.data(), data_size);
             min = static_cast<float*>(min_ptr);
             diff = static_cast<float*>(diff_ptr);
         }
@@ -77,20 +73,19 @@ namespace hnswlib {
         }
 
         template<typename TARGET>
-        TrainParams* get_trained_params() {
-            std::vector<float> diff(dim_);
+        void update_trained_params(TrainParams& params) {
             const auto max_value = std::numeric_limits<TARGET>::max();
+            memcpy((void *) params.min, min_.data(), sizeof(float) * min_.size());
             std::transform(
                 max_.cbegin(), max_.cend(),
                 min_.cbegin(),
-                diff.begin(),
+                params.diff,
                 [&max_value](float max_i, float min_i) {
                     // Normalizing diff by max value of scalar type (255 for uint8_t/float8)
                     // to avoid extra multiplication at decoding time
                     return (max_i - min_i) / max_value;
                 }
             );
-            return new TrainParams(min_, diff);
         }
 
         std::vector<float> min_;

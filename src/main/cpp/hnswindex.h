@@ -96,8 +96,16 @@ public:
         setAlgorithm(algo);
     }
 
+    // TODO: Unify with loadIndex
     void loadBruteforce(const std::string &path_to_index) {
-        setAlgorithm(new hnswlib::BruteforceSearch<dist_t>(space, path_to_index));
+        auto algo = new hnswlib::BruteforceSearch<dist_t>(space, 0);
+        switch (precision) {
+            case Float32: algo->template loadAndDecode<float, float, size_t>(path_to_index, space, nullptr); break;
+            case Float16: algo->template loadAndDecode<float, uint16_t, size_t>(path_to_index, space, encode_func_float16); break;
+            case Float8:  algo->template loadAndDecode<float, uint8_t, hnswlib::TrainParams>(path_to_index, space, encode_func_float8); break;
+            default: throw std::runtime_error("Unsupported precision " + std::to_string(precision));
+        }
+        setAlgorithm(algo);
     }
 
     void normalizeVector(dist_t *data, dist_t *norm_array){

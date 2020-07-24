@@ -75,4 +75,10 @@ public class HnswLib {
     public static native int getMetric(long index);
 
     public static native int getDimension(long index);
+
+    public static native boolean encodingNeedsTraining(long index);
+
+    public static native void trainEncodingSpace(long pointer, float[] vector);
+
+    public static native void trainEncodingSpaceBuffer(long pointer, FloatBuffer vector);
 }
