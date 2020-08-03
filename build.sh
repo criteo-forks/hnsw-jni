@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-./../../gradlew :thridparty:hnsw-jni:build --info
+./../../gradlew :thirdparty:hnsw-jni:build --info
