@@ -17,12 +17,15 @@ public class Fetch extends BaseBench  {
     }
 
     @Benchmark
-    public FloatByteBuf get() {
-        return index.getItem(randomLabel);
+    public void get() throws Exception {
+        FloatByteBuf item = index.getItem(randomLabel);
+        item.close();
     }
 
     @Benchmark
-    public FloatByteBuf getDecoded() {
-        return index.getItemDecoded(randomLabel);
+    public void getDecoded() throws Exception {
+        FloatByteBuf decoded = index.getItemDecoded(randomLabel);
+        decoded.close();
+
     }
 }

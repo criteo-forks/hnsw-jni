@@ -17,12 +17,16 @@ public class HnswKnn extends BaseBench {
     }
 
     @Setup(Level.Invocation)
-    public void setupIter() {
+    public void setupIter() throws Exception {
         queryVector = index.getItemDecoded(randomId());
     }
 
     @Benchmark
-    public KnnResult search() throws Exception {
-        return index.search(queryVector, defaultNbResults);
+    public void search() throws Exception {
+        KnnResult result = index.search(queryVector, defaultNbResults);
+        result.close();
     }
+
+    @TearDown(Level.Invocation)
+    public void tearDownIter() throws Exception { queryVector.close(); }
 }

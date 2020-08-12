@@ -246,15 +246,21 @@ public class HnswLibTests {
         assertEquals(0, results.resultItems[0]);
         assertEquals(0, results.resultDistances[0], 1E-3);
 
-        assertAllEqual(query, index.decode(results.resultVectors[0]), dimension);
+        try (FloatByteBuf decoded = index.decode(results.resultVectors[0])) {
+            assertAllEqual(query, decoded, dimension);
+        }
         for (int i = 1; i < k; i++) {
             long found = results.resultItems[i];
             float distance = results.resultDistances[i];
             assertEquals(k - i, found);
             assertEquals(dimension * (float) Math.pow(getValueById.apply(k - i), 2), distance, 6E-3);
-            assertAllEqual(index.getItemDecoded(found), index.decode(results.resultVectors[i]), dimension);
+            try(FloatByteBuf decodedFound = index.getItemDecoded(found);
+                FloatByteBuf decodedResult = index.decode(results.resultVectors[i])) {
+                assertAllEqual(decodedFound, decodedResult, dimension);
+            }
         }
 
+        query.close();
         index.unload();
     }
 

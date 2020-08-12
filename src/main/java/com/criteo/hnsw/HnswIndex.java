@@ -112,8 +112,10 @@ public class HnswIndex {
         return FloatByteBuf.wrappedBuffer(buffer);
     }
 
-    public FloatByteBuf getItemDecoded(long label) {
-        return decode(getItem(label));
+    public FloatByteBuf getItemDecoded(long label) throws Exception{
+        try(FloatByteBuf item = getItem(label)) {
+            return decode(item);
+        }
     }
 
     public KnnResult search(FloatByteBuf query, int k) throws Exception {

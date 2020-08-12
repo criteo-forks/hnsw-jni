@@ -20,4 +20,7 @@ public class HnswBruteKnn extends BaseBench {
     public KnnResult search() throws Exception {
         return index.searchBruteforce(queryVector, defaultNbResults);
     }
+
+    @TearDown(Level.Invocation)
+    public void tearDownIter() throws Exception { queryVector.close(); }
 }

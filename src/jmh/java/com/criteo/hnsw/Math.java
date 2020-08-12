@@ -32,4 +32,10 @@ public class Math extends BaseBench {
     public float dotProduct() throws Exception {
         return math.innerProductDistance(vector1, vector2);
     }
+
+    @TearDown(Level.Invocation)
+    public void tearDownIter() throws Exception {
+        vector1.close();
+        vector2.close();
+    }
 }
