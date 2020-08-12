@@ -9,4 +9,10 @@ public class KnnResult {
     public KnnResult() {
 
     }
+
+    public final void close() throws Exception {
+        for(FloatByteBuf vector: resultVectors) {
+            vector.close();
+        }
+    }
 }
