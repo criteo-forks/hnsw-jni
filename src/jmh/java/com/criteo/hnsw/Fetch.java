@@ -17,15 +17,16 @@ public class Fetch extends BaseBench  {
     }
 
     @Benchmark
-    public void get() throws Exception {
-        FloatByteBuf item = index.getItem(randomLabel);
-        item.close();
+    public FloatByteBuf get() throws Exception {
+        try(FloatByteBuf item = index.getItem(randomLabel)) {
+            return item;
+        }
     }
 
     @Benchmark
-    public void getDecoded() throws Exception {
-        FloatByteBuf decoded = index.getItemDecoded(randomLabel);
-        decoded.close();
-
+    public FloatByteBuf getDecoded() throws Exception {
+        try(FloatByteBuf decoded = index.getItemDecoded(randomLabel)) {
+            return decoded;
+        }
     }
 }

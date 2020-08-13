@@ -22,9 +22,10 @@ public class HnswKnn extends BaseBench {
     }
 
     @Benchmark
-    public void search() throws Exception {
-        KnnResult result = index.search(queryVector, defaultNbResults);
-        result.close();
+    public KnnResult search() throws Exception {
+        try(KnnResult result = index.search(queryVector, defaultNbResults)) {
+            return result;
+        }
     }
 
     @TearDown(Level.Invocation)

@@ -18,7 +18,9 @@ public class HnswBruteKnn extends BaseBench {
 
     @Benchmark
     public KnnResult search() throws Exception {
-        return index.searchBruteforce(queryVector, defaultNbResults);
+        try(KnnResult result = index.searchBruteforce(queryVector, defaultNbResults)) {
+            return result;
+        }
     }
 
     @TearDown(Level.Invocation)

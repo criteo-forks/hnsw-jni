@@ -169,7 +169,9 @@ public class HnswIndex {
             return null;
         }
         if (precision == Precision.Float32Val) {
-            return FloatByteBuf.wrappedBuffer(src.getNioBuffer());
+            FloatByteBuf ret = new FloatByteBuf(dimension);
+            ret.writeBytes(src);
+            return ret;
         }
         FloatByteBuf decoded = new FloatByteBuf(dimension);
         HnswLib.decode(pointer, src.getNioBuffer(), decoded.getNioBuffer());

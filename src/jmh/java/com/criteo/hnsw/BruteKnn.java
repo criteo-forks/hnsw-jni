@@ -18,21 +18,24 @@ public class BruteKnn extends BaseBench {
     }
 
     @Benchmark
-    public void search() throws Exception {
-        KnnResult result = index.search(queryVector, defaultNbResults);
-        result.close();
+    public KnnResult search() throws Exception {
+        try(KnnResult result = index.search(queryVector, defaultNbResults)) {
+            return result;
+        }
     }
 
     @Benchmark
-    public void get() throws Exception {
-         FloatByteBuf decoded = index.getItem(randomLabel);
-         decoded.close();
+    public FloatByteBuf get() throws Exception {
+        try(FloatByteBuf decoded = index.getItem(randomLabel)) {
+            return decoded;
+        }
     }
 
     @Benchmark
-    public void getDecoded() throws Exception {
-        FloatByteBuf decoded = index.getItemDecoded(randomLabel);
-        decoded.close();
+    public FloatByteBuf getDecoded() throws Exception {
+        try(FloatByteBuf decoded = index.getItemDecoded(randomLabel)) {
+            return decoded;
+        }
     }
 
     @TearDown(Level.Invocation)
