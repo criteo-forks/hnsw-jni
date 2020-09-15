@@ -32,7 +32,7 @@ public class HelloHnsw {
             FloatByteBuf query = index.getItem(queryId);
             KnnResult result = index.search(query, 3);
             for (int j = 0; j < result.resultCount; j++) {
-                System.out.println(queryId + " -> " + result.resultItems[i] + " distance: " + result.resultDistances[i]);
+                System.out.println(queryId + " -> " + result.resultItems[j] + " distance: " + result.resultDistances[j]);
             }
         }
         index.unload();
