@@ -2,6 +2,8 @@ package com.criteo.hnsw;
 
 import org.openjdk.jmh.annotations.*;
 
+import com.criteo.knn.knninterface.FloatByteBuf;
+
 public class Fetch extends BaseBench  {
     public long randomLabel;
     public HnswIndex index;

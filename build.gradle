@@ -26,6 +26,10 @@ libraries {
     library "io.netty:netty-buffer:${netty_buffer_version}"
 }
 
+moabDependencies {
+    compile ':enterprise:knn-interface:knninterface'
+}
+
 task cmake(type: CrossPlatformExec) {
     inputs.file('CMakeLists.txt')
     inputs.file("cmake-unix.sh")

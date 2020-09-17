@@ -1,13 +1,24 @@
 package com.criteo.hnsw;
 
+import com.criteo.knn.knninterface.FloatByteBuf;
+import com.criteo.knn.knninterface.KnnResult;
+import com.criteo.knn.knninterface.LongByteBuf;
+
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
 public class HnswIndex {
-    private long pointer;
-    private int dimension;
-    private int precision;
-    private Boolean isBruteforce;
+    private final long pointer;
+    private final int dimension;
+    private final int precision;
+    private final Boolean isBruteforce;
+
+    public HnswIndex(long pointer, Boolean isBruteforce) {
+        this.pointer = pointer;
+        this.isBruteforce = isBruteforce;
+        this.precision = HnswLib.getPrecision(pointer);
+        this.dimension = HnswLib.getDimension(pointer);
+    }
 
     public static HnswIndex create(String metric, int dimension) {
         return create(metric, dimension, Precision.Float32);
@@ -26,13 +37,6 @@ public class HnswIndex {
     public static HnswIndex create(int metricVal, int dimension, int precisionVal, Boolean isBruteforce) {
         long pointer = HnswLib.create(dimension, metricVal, precisionVal);
         return new HnswIndex(pointer, isBruteforce);
-    }
-
-    public HnswIndex(long pointer, Boolean isBruteforce) {
-        this.pointer = pointer;
-        this.isBruteforce = isBruteforce;
-        this.precision = HnswLib.getPrecision(pointer);
-        this.dimension = HnswLib.getDimension(pointer);
     }
 
     public long getPointer() {
@@ -106,14 +110,14 @@ public class HnswIndex {
 
     public FloatByteBuf getItem(long label) {
         ByteBuffer buffer = HnswLib.getItem(this.pointer, label);
-        if(buffer == null) {
+        if (buffer == null) {
             return null;
         }
         return FloatByteBuf.wrappedBuffer(buffer);
     }
 
-    public FloatByteBuf getItemDecoded(long label) throws Exception{
-        try(FloatByteBuf item = getItem(label)) {
+    public FloatByteBuf getItemDecoded(long label) throws Exception {
+        try (FloatByteBuf item = getItem(label)) {
             return decode(item);
         }
     }
@@ -127,8 +131,8 @@ public class HnswIndex {
     }
 
     public KnnResult search(FloatByteBuf query, int k, boolean bruteforceSearch) throws Exception {
-        try(LongByteBuf result_item = new LongByteBuf(k)) {
-            try(FloatByteBuf result_distance = new FloatByteBuf(k)) {
+        try (LongByteBuf result_item = new LongByteBuf(k)) {
+            try (FloatByteBuf result_distance = new FloatByteBuf(k)) {
                 ByteBuffer[] result_vectors = new ByteBuffer[k];
                 int resultCount = HnswLib.search(pointer, query.asFloatBuffer(), k,
                         result_item.asLongBuffer(),

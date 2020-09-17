@@ -2,6 +2,9 @@ package com.criteo.hnsw;
 
 import org.openjdk.jmh.annotations.*;
 
+import com.criteo.knn.knninterface.FloatByteBuf;
+import com.criteo.knn.knninterface.KnnResult;
+
 public class BruteKnn extends BaseBench {
     public FloatByteBuf queryVector;
     public long randomLabel;

@@ -2,6 +2,8 @@ package com.criteo.hnsw;
 
 import org.openjdk.jmh.annotations.*;
 
+import com.criteo.knn.knninterface.FloatByteBuf;
+
 public class Math extends BaseBench {
     public FloatByteBuf vector1;
     public FloatByteBuf vector2;

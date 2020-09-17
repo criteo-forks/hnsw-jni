@@ -8,12 +8,14 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.LongBuffer;
 
+
 public class HnswLib {
     static {
         LoadNativeLib();
     }
 
-    public static void ensureLoaded() {}
+    public static void ensureLoaded() {
+    }
 
     private static void LoadNativeLib() {
         try {
@@ -21,7 +23,7 @@ public class HnswLib {
                 NativeUtils.loadLibraryFromJar("/native/libHNSWLIB_JNI.so");
             } else if (SystemUtils.IS_OS_MAC_OSX) {
                 NativeUtils.loadLibraryFromJar("/native/libHNSWLIB_JNI.dylib");
-            } else if (SystemUtils.IS_OS_WINDOWS){
+            } else if (SystemUtils.IS_OS_WINDOWS) {
                 NativeUtils.loadLibraryFromJar("/native/libHNSWLIB_JNI.dll");
             } else {
                 throw new NotImplementedException("OS is not compatible");

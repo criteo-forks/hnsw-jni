@@ -7,6 +7,9 @@ import java.util.Random;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.criteo.knn.knninterface.FloatByteBuf;
+import com.criteo.knn.knninterface.LongByteBuf;
+
 public class MathLibTest {
     public static float delta = 1E-6f;
     public static int seed = 42;

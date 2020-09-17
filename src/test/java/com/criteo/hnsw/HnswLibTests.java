@@ -12,6 +12,10 @@ import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 
+import com.criteo.knn.knninterface.FloatByteBuf;
+import com.criteo.knn.knninterface.LongByteBuf;
+import com.criteo.knn.knninterface.KnnResult;
+
 public class HnswLibTests {
     private static float delta = 8E-6f;
     private int randomSeed = 42;
