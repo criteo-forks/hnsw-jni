@@ -16,23 +16,44 @@ public class HnswIndexWrapped implements Index {
         this.hnswIndex = hnswIndex;
     }
 
+    /**
+     * Function that creates an HnswIndexWrapped index.
+     *
+     * All the possible parameter keys taken in input in the Map<String, String> params variable are:
+     * - precision
+     * - isBruteforce
+     * - maxElements
+     * - randomSeed
+     * - efSearch
+     * - efConstruction
+     * - M
+     *
+     * -> The default value of the "precision" field is "float32" (if required).
+     * -> The default value of the "isBruteforce" field is "false" (if required).
+     *
+     * If "isBruteforce" is set to "true", the following parameters are requiered:
+     * -> [M, maxElements, efConstruction, efSearch, randomSeed]
+     * If "isBruteforce" is set to "false", the following parameters are requiered:
+     * -> [maxElements] (maxElements default value is "0")
+     *
+     * @param metric distance between queries and vectors (inner product, L2, ...).
+     * @param dimension dimension of the vectors in the database.
+     * @param params dictionary of parameters necessary for the loading of the index, see readme for more info
+     *
+     * @return The created HnswIndexWrapped object implementing the Index interface.
+     */
     public static HnswIndexWrapped create(Metric metric, int dimension, Map<String, String> params) {
 
         String metricString = Metrics.getStringVal(metric);
 
+        String precision = params.getOrDefault("precision", "float32");
+        boolean isBruteforce = Boolean.parseBoolean(params.getOrDefault("isBruteforce", "false"));
+
         HnswIndex hnswIndex;
 
-        if (params.containsKey("precision")) {
-            if (params.containsKey("isBruteforce")) {
-                hnswIndex = HnswIndex.create(metricString, dimension, params.get("precision"), Boolean.parseBoolean(params.get("isBruteforce")));
-            } else {
-                hnswIndex = HnswIndex.create(metricString, dimension, params.get("precision"));
-            }
-        } else {
-            hnswIndex = HnswIndex.create(Metrics.getStringVal(metric), dimension);
-        }
+        hnswIndex = HnswIndex.create(metricString, dimension, precision, isBruteforce);
 
-        if (params.containsKey("isBruteforce") && Boolean.parseBoolean(params.get("isBruteforce"))) {
+        if (isBruteforce) {
             hnswIndex.initBruteforce(Long.parseLong(params.getOrDefault("maxElements", "0")));
         } else {
             long M = Long.parseLong(params.get("M"));
@@ -47,6 +68,20 @@ public class HnswIndexWrapped implements Index {
         return new HnswIndexWrapped(hnswIndex);
     }
 
+    /**
+     * Function that loads an HnswIndexWrapped index.
+     *
+     * In order to load the index you always need to specify some keys in the params Map:
+     * - precision -> float precision, default to "float32"
+     * - efSearch -> hnsw hyper-parameter, it's unclear whether this parameter is saved or not in the file containing
+     * the index since it is redefined all the time. It's better to set a value here.
+     *
+     * @param metric distance between queries and vectors (inner product, L2, ...).
+     * @param dimension dimension of the vectors in the database.
+     * @param path path to the saved model.
+     * @param params dictionary of parameters necessary for the loading of the index, see readme for more info.
+     * @return The loaded HnswIndexWrapped object implementing the Index interface.
+     */
     public static HnswIndexWrapped loadIndex(Metric metric, int dimension, String path, Map<String, String> params) {
         String metricString = Metrics.getStringVal(metric);
         HnswIndexWrapped index = new HnswIndexWrapped(HnswIndex.create(metricString, dimension, params.getOrDefault("precision", "float32")));
@@ -55,6 +90,13 @@ public class HnswIndexWrapped implements Index {
         return index;
     }
 
+    /**
+     * Set index hyper-parameters.
+     *
+     * @param params dictionary of hyper-parameters
+     *
+     * params should only contain the key "efSearch" if available and relevant, all the other keys are ignored.
+     */
     private void setHyperParameters(Map<String, String> params) {
         if (params.containsKey("efSearch")) {
             long efSearch = Integer.parseInt(params.get("efSearch"));
@@ -105,6 +147,20 @@ public class HnswIndexWrapped implements Index {
     @Override
     public void addItem(float[] vector, long id) {
         hnswIndex.addItem(vector, id);
+    }
+
+    /**
+     * Gives the maximal reconstruction error of the vectors of the index
+     */
+    public float getExpectedReconstructionError() {
+        switch (hnswIndex.getPrecision()){
+            case Precision.Float32Val:
+                return 3E-7f;
+            case Precision.Float16Val:
+                return 2E-4f;
+            default:
+                return 1E7f;
+        }
     }
 
     /**
