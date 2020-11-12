@@ -78,6 +78,7 @@ dependencies {
     testImplementation libraries["junit:junit"]
     jmh 'org.openjdk.jmh:jmh-core:0.9'
     jmh 'org.openjdk.jmh:jmh-generator-annprocess:0.9'
+    implementation 'com.google.code.gson:gson:2.8.6'
 }
 
 shadowJar {

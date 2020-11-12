@@ -4,21 +4,24 @@ import com.criteo.knn.knninterface.FloatByteBuf;
 import com.criteo.knn.knninterface.Index;
 import com.criteo.knn.knninterface.KnnResult;
 import com.criteo.knn.knninterface.Metric;
+import com.google.gson.Gson;
 
 import java.util.Map;
 
 
 public class HnswIndexWrapped implements Index {
 
-    HnswIndex hnswIndex;
+    private final HnswIndex hnswIndex;
+    private final Map<String, String> indexParams;
 
-    public HnswIndexWrapped(HnswIndex hnswIndex) {
+    public HnswIndexWrapped(HnswIndex hnswIndex, Map<String, String> indexParams) {
         this.hnswIndex = hnswIndex;
+        this.indexParams = indexParams;
     }
 
     /**
      * Function that creates an HnswIndexWrapped index.
-     *
+     * <p>
      * All the possible parameter keys taken in input in the Map<String, String> params variable are:
      * - precision
      * - isBruteforce
@@ -27,19 +30,18 @@ public class HnswIndexWrapped implements Index {
      * - efSearch
      * - efConstruction
      * - M
-     *
+     * <p>
      * -> The default value of the "precision" field is "float32" (if required).
      * -> The default value of the "isBruteforce" field is "false" (if required).
-     *
+     * <p>
      * If "isBruteforce" is set to "true", the following parameters are requiered:
      * -> [M, maxElements, efConstruction, efSearch, randomSeed]
      * If "isBruteforce" is set to "false", the following parameters are requiered:
      * -> [maxElements] (maxElements default value is "0")
      *
-     * @param metric distance between queries and vectors (inner product, L2, ...).
+     * @param metric    distance between queries and vectors (inner product, L2, ...).
      * @param dimension dimension of the vectors in the database.
-     * @param params dictionary of parameters necessary for the loading of the index, see readme for more info
-     *
+     * @param params    dictionary of parameters necessary for the loading of the index, see readme for more info
      * @return The created HnswIndexWrapped object implementing the Index interface.
      */
     public static HnswIndexWrapped create(Metric metric, int dimension, Map<String, String> params) {
@@ -65,26 +67,29 @@ public class HnswIndexWrapped implements Index {
             hnswIndex.setEf(efSearch);
         }
 
-        return new HnswIndexWrapped(hnswIndex);
+        return new HnswIndexWrapped(hnswIndex, params);
     }
 
     /**
      * Function that loads an HnswIndexWrapped index.
-     *
+     * <p>
      * In order to load the index you always need to specify some keys in the params Map:
      * - precision -> float precision, default to "float32"
      * - efSearch -> hnsw hyper-parameter, it's unclear whether this parameter is saved or not in the file containing
      * the index since it is redefined all the time. It's better to set a value here.
      *
-     * @param metric distance between queries and vectors (inner product, L2, ...).
+     * @param metric    distance between queries and vectors (inner product, L2, ...).
      * @param dimension dimension of the vectors in the database.
-     * @param path path to the saved model.
-     * @param params dictionary of parameters necessary for the loading of the index, see readme for more info.
+     * @param path      path to the saved model.
+     * @param params    dictionary of parameters necessary for the loading of the index, see readme for more info.
      * @return The loaded HnswIndexWrapped object implementing the Index interface.
      */
     public static HnswIndexWrapped loadIndex(Metric metric, int dimension, String path, Map<String, String> params) {
         String metricString = Metrics.getStringVal(metric);
-        HnswIndexWrapped index = new HnswIndexWrapped(HnswIndex.create(metricString, dimension, params.getOrDefault("precision", "float32")));
+        if (!params.containsKey("precision")) {
+            params.put("precision", "float32");
+        }
+        HnswIndexWrapped index = new HnswIndexWrapped(HnswIndex.create(metricString, dimension, params.get("precision")), params);
         index.readIndex(path);
         index.setHyperParameters(params);
         return index;
@@ -94,11 +99,12 @@ public class HnswIndexWrapped implements Index {
      * Set index hyper-parameters.
      *
      * @param params dictionary of hyper-parameters
-     *
-     * params should only contain the key "efSearch" if available and relevant, all the other keys are ignored.
+     *               <p>
+     *               params should only contain the key "efSearch" if available and relevant, all the other keys are ignored.
      */
     private void setHyperParameters(Map<String, String> params) {
         if (params.containsKey("efSearch")) {
+            this.indexParams.replace("efSearch", params.get("efSearch"));
             long efSearch = Integer.parseInt(params.get("efSearch"));
             hnswIndex.setEf(efSearch);
         }
@@ -153,7 +159,7 @@ public class HnswIndexWrapped implements Index {
      * Gives the maximal reconstruction error of the vectors of the index
      */
     public float getExpectedReconstructionError() {
-        switch (hnswIndex.getPrecision()){
+        switch (hnswIndex.getPrecision()) {
             case Precision.Float32Val:
                 return 3E-7f;
             case Precision.Float16Val:
@@ -239,6 +245,15 @@ public class HnswIndexWrapped implements Index {
     @Override
     public void readIndex(String path) {
         hnswIndex.load(path);
+    }
+
+    /**
+     * Get the construction parameters and hyper-parameters of the index.
+     *
+     * @return a json string describing the parameters.
+     */
+    String getIndexParameters() {
+        return new Gson().toJson(this.indexParams);
     }
 
     /**
