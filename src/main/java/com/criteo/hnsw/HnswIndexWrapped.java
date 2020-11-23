@@ -6,7 +6,7 @@ import com.criteo.knn.knninterface.KnnResult;
 import com.criteo.knn.knninterface.Metric;
 import com.google.gson.Gson;
 
-import java.util.Map;
+import java.util.*;
 
 
 public class HnswIndexWrapped implements Index {
@@ -16,7 +16,7 @@ public class HnswIndexWrapped implements Index {
 
     public HnswIndexWrapped(HnswIndex hnswIndex, Map<String, String> indexParams) {
         this.hnswIndex = hnswIndex;
-        this.indexParams = indexParams;
+        this.indexParams = new HashMap<>(indexParams);
     }
 
     /**
