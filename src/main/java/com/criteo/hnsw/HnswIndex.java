@@ -52,7 +52,7 @@ public class HnswIndex {
     }
 
     public int getDimension() {
-        return HnswLib.getDimension(pointer);
+        return dimension;
     }
 
     public int getPrecision() {

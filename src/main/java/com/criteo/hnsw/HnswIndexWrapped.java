@@ -1,9 +1,7 @@
 package com.criteo.hnsw;
 
-import com.criteo.knn.knninterface.FloatByteBuf;
-import com.criteo.knn.knninterface.Index;
-import com.criteo.knn.knninterface.KnnResult;
-import com.criteo.knn.knninterface.Metric;
+import com.criteo.knn.knninterface.*;
+
 import com.google.gson.Gson;
 
 import java.util.*;
@@ -199,6 +197,11 @@ public class HnswIndexWrapped implements Index {
         return hnswIndex.getIds();
     }
 
+    @Override
+    public int getDimension() {
+        return hnswIndex.getDimension();
+    }
+
     /**
      * Return the vector of id i (or an approximation depending of the index).
      *
@@ -224,6 +227,15 @@ public class HnswIndexWrapped implements Index {
         return knnResult;
     }
 
+    @java.lang.Override
+    public BatchedKnnResult search_batch(int n, FloatByteBuf queries, int k) throws Exception {
+        BatchedKnnResult batchedKnnResult = new BatchedKnnResult(n);
+        int dimension = hnswIndex.getDimension();
+        for (int i = 0; i < n; i++) {
+            batchedKnnResult.knnResults[i] = search(queries.slice(i * dimension, dimension), k);
+        }
+        return batchedKnnResult;
+    }
     /**
      * Return k nearest neighbours of the query vector.
      *
